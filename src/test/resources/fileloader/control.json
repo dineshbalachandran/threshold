@@ -1,0 +1,20 @@
+{
+  "thresholdcontrols": [
+    {
+      "thresholdcontrol": {
+        "id": "TH001",
+        "breachStart": -1,
+        "breachLevel": -1,
+        "time": -1
+      }
+    },
+    {
+      "thresholdcontrol": {
+        "id": "TH002",
+        "breachStart": 1000,
+        "breachLevel": 0,
+        "time": 154303000
+      }
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "breached": true,
+  "id": "TH001",
+  "level": 0,
+  "count": 5,
+  "start": 1559046767000,
+  "end": 1559046771000,
+  "duration": 4000
+}
+{
+  "breached": false,
+  "id": "TH001",
+  "level": 1,
+  "count": 14,
+  "start": 1559046767000,
+  "end": 1559046779000,
+  "duration": 12000
+}
+{
+  "breached": false,
+  "id": "TH001",
+  "level": 1,
+  "count": 15,
+  "start": 1559046767000,
+  "end": 1559046788000,
+  "duration": 21000
+}
+{
+  "breached": true,
+  "id": "TH002",
+  "level": 0,
+  "count": 2,
+  "start": 1559046797500,
+  "end": 1559046799500,
+  "duration": 2000
+}

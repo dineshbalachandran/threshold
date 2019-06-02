@@ -1,0 +1,51 @@
+{
+  "thresholds": [
+    {
+      "threshold": {
+        "id": "TH001",
+        "mapping": [
+          "EOI1",
+          "EOI2"
+        ],
+        "levels": [
+          {
+            "count": 5,
+            "duration": 5000
+          },
+          {
+            "count": 10,
+            "duration": 10000
+          },
+          {
+            "count": 15,
+            "duration": 20000
+          }
+        ]
+      }
+    },
+    {
+      "threshold": {
+        "id": "TH002",
+        "mapping": [
+          "EOI3",
+          "EOI4",
+          "EOI5"
+        ],
+        "levels": [
+          {
+            "count": 2,
+            "duration": 5000
+          },
+          {
+            "count": 10,
+            "duration": 10000
+          },
+          {
+            "count": 15,
+            "duration": 20000
+          }
+        ]
+      }
+    }
+  ]
+}
