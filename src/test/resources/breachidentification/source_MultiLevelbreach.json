@@ -1,88 +1,22 @@
-{
-  "eoiId": "EOI1",
-  "time": 1559046767000
-}
-{
-  "eoiId": "EOI2",
-  "time": 1559046768000
-}
-{
-  "eoiId": "EOI1",
-  "time": 1559046769000
-}
-{
-  "eoiId": "EOI2",
-  "time": 1559046770000
-}
-{
-  "eoiId": "EOI2",
-  "time": 1559046771000
-}
-{
-  "eoiId": "EOI1",
-  "time": 1559046772000
-}
-{
-  "eoiId": "EOI2",
-  "time": 1559046773000
-}
-{
-  "eoiId": "EOI1",
-  "time": 1559046774000
-}
-{
-  "eoiId": "EOI6",
-  "time": 1559046767000
-}
-{
-  "eoiId": "EOI2",
-  "time": 1559046775000
-}
-{
-  "eoiId": "EOI1",
-  "time": 1559046778000
-}
-{
-  "eoiId": "EOI2",
-  "time": 1559046778100
-}
-{
-  "eoiId": "EOI2",
-  "time": 1559046778200
-}
-{
-  "eoiId": "EOI1",
-  "time": 1559046778300
-}
-{
-  "eoiId": "EOI2",
-  "time": 1559046779000
-}
-{
-  "eoiId": "EOI2",
-  "time": 1559046780000
-}
-{
-  "eoiId": "EOI1",
-  "time": 1559046782000
-}
-{
-  "eoiId": "EOI1",
-  "time": 1559046783000
-}
-{
-  "eoiId": "EOI2",
-  "time": 1559046784000
-}
-{
-  "eoiId": "EOI2",
-  "time": 1559046786000
-}
-{
-  "eoiId": "EOI1",
-  "time": 1559046787500
-}
-{
-  "eoiId": "EOI2",
-  "time": 1559046788500
-}
+{"eoiId": "EOI1","time": 1559046767000}
+{"eoiId": "EOI2","time": 1559046768000}
+{"eoiId": "EOI1","time": 1559046769000}
+{"eoiId": "EOI2","time": 1559046770000}
+{"eoiId": "EOI2","time": 1559046771000}
+{"eoiId": "EOI1","time": 1559046772000}
+{"eoiId": "EOI2","time": 1559046773000}
+{"eoiId": "EOI1","time": 1559046774000}
+{"eoiId": "EOI6","time": 1559046767000}
+{"eoiId": "EOI2","time": 1559046775000}
+{"eoiId": "EOI1","time": 1559046778000}
+{"eoiId": "EOI2","time": 1559046778100}
+{"eoiId": "EOI2","time": 1559046778200}
+{"eoiId": "EOI1","time": 1559046778300}
+{"eoiId": "EOI2","time": 1559046779000}
+{"eoiId": "EOI2","time": 1559046780000}
+{"eoiId": "EOI1","time": 1559046782000}
+{"eoiId": "EOI1","time": 1559046783000}
+{"eoiId": "EOI2","time": 1559046784000}
+{"eoiId": "EOI2","time": 1559046786000}
+{"eoiId": "EOI1","time": 1559046787500}
+{"eoiId": "EOI2","time": 1559046788500}

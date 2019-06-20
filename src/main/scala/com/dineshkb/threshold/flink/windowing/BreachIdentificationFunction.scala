@@ -21,7 +21,7 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
     val cs = context.windowState.getState(controlDesc)
     val thc = cs.value
 
-    println("f" + context.currentWatermark)
+
 
     val events = mergeElementsAndState(ls, elements, th, thc, context)
     val outEvent = identifyBreach(th, events, thc)
@@ -37,14 +37,9 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
   }
 
   private def mergeElementsAndState(ls: ListState[InEvent], elements: Iterable[EnrichedEvent], th: ThresholdDefinition, thc: ThresholdControl, context: Context) = {
-    //val cutOff = if (thc.breached) thc.breachStart else context.currentWatermark - th.levels.head.duration
     val l = new scala.collection.mutable.ListBuffer[InEvent]
-
-    //l ++= elements.filter(x => x.inEvent.time >= cutOff).map(_.inEvent)
     l ++= elements.map(_.inEvent)
-    //ls.get.forEach(x => if (x.time >= cutOff) l += x)
     ls.get.forEach(x => l += x)
-
     l.toList.sortBy(_.time)
   }
 
@@ -66,7 +61,7 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
 
   /** a recursive sliding window implementation */
   private def firstlevel(start: Int, end: Int, id: String, events: List[InEvent], thLevel: ThresholdLevel): OutEvent = {
-    println(":" + events.size + ":" + start + ":" + end)
+
     if (end == events.size)
       OutEvent(breached = false, id, level = 0, end - start, events(start).time, events(end - 1).time, events(end - 1).time - events(start).time)
     else if (end - start + 1 == thLevel.count && events(end).time <= events(start).time + thLevel.duration)

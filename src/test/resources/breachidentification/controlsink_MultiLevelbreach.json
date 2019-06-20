@@ -1,12 +1,2 @@
-{
-  "id": "TH001",
-  "breachStart": 1559046767000,
-  "breachLevel": 0,
-  "time": 1559488837458
-}
-{
-  "id": "TH001",
-  "breachStart": 1559046767000,
-  "breachLevel": 2,
-  "time": 1559488837526
-}
+{"id":"TH001","breachStart":1559046767000,"breachLevel":0}
+{"id":"TH001","breachStart":1559046767000,"breachLevel":2}

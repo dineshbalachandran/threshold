@@ -13,34 +13,19 @@ class ThresholdTrigger extends Trigger[EnrichedEvent, Window] {
   val syncAchievedDesc = new ValueStateDescriptor[Boolean]("syncAchievedDesc", TypeInformation.of(new TypeHint[Boolean] {}))
 
   override def onElement(e: EnrichedEvent, timestamp: Long, window: Window, ctx: Trigger.TriggerContext): TriggerResult = {
-
-    println("T" + e.thDef.id + ":" + ctx.getCurrentWatermark + ":" + Thread.currentThread().getId())
-
-    val th = e.thDef
-
-    th match {
+    e.thDef match {
       case threshold.UNDEFINED => TriggerResult.PURGE
       case _ =>
         val thc = getUpdatedThresholdControlState(e.thCtrl, ctx)
-        if (thc.breached) {
-          if (furtherBreachPossible(ctx.getCurrentWatermark, th, thc)) { //continue if further breaches are possible else purge
-            // if (e.inEvent.time >= ctx.getCurrentWatermark) //register event only if it is not late
-              th.levels.slice(thc.breachLevel + 1, th.levels.size)
-                .foreach(x => ctx.registerEventTimeTimer(thc.breachStart + x.duration))
-            TriggerResult.CONTINUE
-          }
-          else
-            TriggerResult.PURGE
-        } else {
-          //if (e.inEvent.time >= ctx.getCurrentWatermark) //register event only if it is not late
-            ctx.registerEventTimeTimer(e.inEvent.time + th.levels.head.duration)
-          TriggerResult.CONTINUE
-        }
+        if (furtherBreachPossible(ctx.getCurrentWatermark, e.thDef, thc))
+          TriggerResult.FIRE_AND_PURGE
+        else
+          TriggerResult.PURGE
     }
   }
 
   private def furtherBreachPossible(time: Long, th: ThresholdDefinition, thc: ThresholdControl): Boolean =
-    thc.breachStart + th.levels.last.duration >= time
+    !thc.breached || thc.breachStart + th.levels.last.duration >= time
 
   //TODO: Consider implementing a State Machine (though it may not be required for this simple case)
   /*This method considers the below 7 input conditions and updates the threshold control state
@@ -89,12 +74,7 @@ class ThresholdTrigger extends Trigger[EnrichedEvent, Window] {
 
   override def onProcessingTime(time: Long, window: Window, ctx: Trigger.TriggerContext): TriggerResult = TriggerResult.CONTINUE
 
-  override def onEventTime(time: Long, window: Window, ctx: Trigger.TriggerContext): TriggerResult = {
-    println("On" + ctx.getCurrentWatermark + ":" + time)
-
-    ctx.deleteEventTimeTimer(time)
-    TriggerResult.FIRE_AND_PURGE
-  }
+  override def onEventTime(time: Long, window: Window, ctx: Trigger.TriggerContext): TriggerResult = TriggerResult.CONTINUE
 
   override def clear(window: Window, ctx: Trigger.TriggerContext): Unit = {}
 }

@@ -1,36 +1,26 @@
-{
-  "breached": true,
-  "id": "TH001",
-  "level": 0,
-  "count": 5,
-  "start": 1559046767000,
-  "end": 1559046771000,
-  "duration": 4000
-}
-{
-  "breached": false,
-  "id": "TH001",
-  "level": 1,
-  "count": 14,
-  "start": 1559046767000,
-  "end": 1559046779000,
-  "duration": 12000
-}
-{
-  "breached": false,
-  "id": "TH001",
-  "level": 1,
-  "count": 15,
-  "start": 1559046767000,
-  "end": 1559046788000,
-  "duration": 21000
-}
-{
-  "breached": true,
-  "id": "TH002",
-  "level": 0,
-  "count": 2,
-  "start": 1559046797500,
-  "end": 1559046799500,
-  "duration": 2000
-}
+{"breached":false,"id":"TH001","level":0,"count":1,"start":1559046767000,"end":1559046767000,"duration":0}
+{"breached":false,"id":"TH001","level":0,"count":2,"start":1559046767000,"end":1559046769000,"duration":2000}
+{"breached":false,"id":"TH001","level":0,"count":3,"start":1559046767000,"end":1559046769000,"duration":2000}
+{"breached":false,"id":"TH001","level":0,"count":4,"start":1559046767000,"end":1559046770000,"duration":3000}
+{"breached":true,"id":"TH001","level":0,"count":5,"start":1559046767000,"end":1559046771000,"duration":4000}
+{"breached":false,"id":"TH001","level":1,"count":6,"start":1559046767000,"end":1559046772000,"duration":5000}
+{"breached":false,"id":"TH001","level":1,"count":7,"start":1559046767000,"end":1559046773000,"duration":6000}
+{"breached":false,"id":"TH001","level":1,"count":8,"start":1559046767000,"end":1559046774000,"duration":7000}
+{"breached":false,"id":"TH001","level":1,"count":9,"start":1559046767000,"end":1559046775000,"duration":8000}
+{"breached":false,"id":"TH001","level":1,"count":10,"start":1559046767000,"end":1559046778000,"duration":11000}
+{"breached":false,"id":"TH001","level":1,"count":11,"start":1559046767000,"end":1559046779000,"duration":12000}
+{"breached":false,"id":"TH001","level":1,"count":12,"start":1559046767000,"end":1559046779000,"duration":12000}
+{"breached":false,"id":"TH001","level":1,"count":13,"start":1559046767000,"end":1559046788000,"duration":21000}
+{"breached":false,"id":"TH001","level":1,"count":14,"start":1559046767000,"end":1559046788000,"duration":21000}
+{"breached":false,"id":"TH001","level":1,"count":15,"start":1559046767000,"end":1559046788000,"duration":21000}
+{"breached":false,"id":"TH002","level":0,"count":1,"start":1559046790000,"end":1559046790000,"duration":0}
+{"breached":false,"id":"TH002","level":0,"count":1,"start":1559046796400,"end":1559046796400,"duration":0}
+{"breached":true,"id":"TH002","level":0,"count":2,"start":1559046789000,"end":1559046790000,"duration":1000}
+{"breached":false,"id":"TH002","level":1,"count":4,"start":1559046789000,"end":1559046796400,"duration":7400}
+{"breached":false,"id":"TH002","level":1,"count":5,"start":1559046789000,"end":1559046796400,"duration":7400}
+{"breached":false,"id":"TH002","level":1,"count":6,"start":1559046789000,"end":1559046797500,"duration":8500}
+{"breached":false,"id":"TH002","level":1,"count":7,"start":1559046789000,"end":1559046797500,"duration":8500}
+{"breached":false,"id":"TH002","level":1,"count":8,"start":1559046789000,"end":1559046797500,"duration":8500}
+{"breached":false,"id":"TH002","level":1,"count":9,"start":1559046789000,"end":1559046797500,"duration":8500}
+{"breached":false,"id":"TH002","level":1,"count":10,"start":1559046789000,"end":1559046799500,"duration":10500}
+{"breached":false,"id":"TH002","level":1,"count":11,"start":1559046789000,"end":1559046800000,"duration":11000}

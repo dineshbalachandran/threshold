@@ -22,7 +22,7 @@ class InEventFileSource extends InEventSource {
   private var reader: BufferedReader = _
 
   override def run(sourceContext: SourceContext[InEvent]): Unit = {
-    generateOrderedStream(sourceContext)
+    generateStream(sourceContext)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -52,7 +52,7 @@ class InEventFileSource extends InEventSource {
         dataStartTime = event.time
         nextWatermark = dataStartTime - 10000 + watermarkDelayMSecs
         nextWatermarkServingTime = toServingTime(servingStartTime, dataStartTime, nextWatermark)
-        println("w:" + (dataStartTime - 10000) + ":" + Thread.currentThread().getId())
+
         sourceContext.emitWatermark(new Watermark(dataStartTime - 10000))
         sourceContext.collectWithTimestamp(event, event.time)
       }
@@ -78,7 +78,7 @@ class InEventFileSource extends InEventSource {
         } else if (eventWait > watermarkWait) {
           Thread.sleep(if (watermarkWait > 0) watermarkWait else 0)
 
-          println("w:" + nextWatermark + ":" + Thread.currentThread().getId())
+
           sourceContext.emitWatermark(new Watermark(nextWatermark))
           nextWatermark += watermarkDelayMSecs
           nextWatermarkServingTime = toServingTime(servingStartTime, dataStartTime, nextWatermark)
@@ -87,7 +87,7 @@ class InEventFileSource extends InEventSource {
           Thread.sleep(if (remainWait > 0) remainWait else 0)
         } else if (eventWait == watermarkWait) {
           Thread.sleep(if (watermarkWait > 0) watermarkWait else 0)
-          println("w:" + nextWatermark + ":" + Thread.currentThread().getId())
+
           sourceContext.emitWatermark(new Watermark(nextWatermark))
           nextWatermark += watermarkDelayMSecs
           nextWatermarkServingTime = toServingTime(servingStartTime, dataStartTime, nextWatermark)
@@ -96,7 +96,7 @@ class InEventFileSource extends InEventSource {
         sourceContext.collectWithTimestamp(event, event.time)
       }
     }
-    println("w:" + nextWatermark + ":" + Thread.currentThread().getId())
+
     sourceContext.emitWatermark(new Watermark(nextWatermark))
   }
 

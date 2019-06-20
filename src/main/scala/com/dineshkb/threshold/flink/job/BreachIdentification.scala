@@ -7,7 +7,7 @@ import com.dineshkb.threshold.domain.{InEvent, OutEvent, ThresholdControl}
 import com.dineshkb.threshold.flink.streams.{InEventSource, OutEventSink, ThresholdControlSink}
 import com.dineshkb.threshold.flink.windowing.{AsyncThresholdEnricherFunction, BreachIdentificationFunction, ThresholdTrigger}
 import org.apache.flink.streaming.api.TimeCharacteristic
-import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks
+import org.apache.flink.streaming.api.functions.AssignerWithPunctuatedWatermarks
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.watermark.Watermark
 import org.apache.flink.streaming.api.windowing.assigners.GlobalWindows
@@ -30,32 +30,37 @@ object BreachIdentification {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
     env.setParallelism(System.getProperty("job.parallelism").toInt)
-    env.getConfig.setAutoWatermarkInterval(System.getProperty("source.watermarkIntervalMillis").toLong)
 
     val src = InEventSource(System.getProperty("source.inEvent"))
     val eventSnk = OutEventSink(System.getProperty("sink.outEvent"))
     val cntrlSnk = ThresholdControlSink(System.getProperty("sink.thresholdControl"))
 
-    //TODO: add custom timestamp and watermark assigner
     //TODO: add kinesis source and sink
     //TODO: add logging
-    //TODO: Remove println statements
 
     val in: DataStream[InEvent] = env
       .addSource(src)
-      .assignTimestampsAndWatermarks(
-        new AssignerWithPeriodicWatermarks[InEvent] {
-          val watermarkInterval: Long = System.getProperty("source.watermarkIntervalMillis").toLong
-          var currentWaterMark: Long = -1L
+      .assignTimestampsAndWatermarks(new AssignerWithPunctuatedWatermarks[InEvent] {
+        val watermarkDelay = System.getProperty("source.watermarkDelayMillis").toLong
+        var nextWaterMarkTime: Long = -1L
+        var maxTime: Long = -1L
 
-          override def extractTimestamp(element: InEvent, previousElementTimestamp: Long): Long = {
-            if (currentWaterMark == -1L)
-              currentWaterMark = element.time - watermarkInterval
-            element.time
+        override def extractTimestamp(element: InEvent, previousElementTimestamp: Long): Long = {
+          maxTime = if (element.time > maxTime) element.time else maxTime
+          element.time
+        }
+
+        override def checkAndGetNextWatermark(lastElement: InEvent, extractedTimestamp: Long): Watermark = {
+          nextWaterMarkTime = if (nextWaterMarkTime < 0) extractedTimestamp - watermarkDelay else nextWaterMarkTime
+          if (maxTime >= nextWaterMarkTime + watermarkDelay) {
+            val w = new Watermark(nextWaterMarkTime)
+            nextWaterMarkTime += watermarkDelay
+            w
+          } else {
+            null
           }
-
-          override def getCurrentWatermark: Watermark = new Watermark(currentWaterMark + watermarkInterval)
-        })
+        }
+      })
 
     val enriched = AsyncDataStream.unorderedWait(in, AsyncThresholdEnricherFunction(),
       System.getProperty("threshold.enricher.timeoutMillis").toLong, TimeUnit.MILLISECONDS,
