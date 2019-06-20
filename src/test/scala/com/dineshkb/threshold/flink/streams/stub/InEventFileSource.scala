@@ -1,39 +1,34 @@
-package com.dineshkb.threshold.flink.streams
+package com.dineshkb.threshold.flink.streams.stub
 
 import java.io.{BufferedReader, FileInputStream, IOException, InputStreamReader}
 import java.util.Calendar
 
 import com.dineshkb.threshold.domain.InEvent
+import com.dineshkb.threshold.flink.streams.InEventSource
 import net.liftweb.json.{DefaultFormats, parse}
-import org.apache.flink.streaming.api.functions.source.RichSourceFunction
+import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.streaming.api.watermark.Watermark
 
-class InEventFileSource extends RichSourceFunction[InEvent] with InEventSource {
+class InEventFileSource extends InEventSource {
 
   private var dataFilePath: String = _
   private var maxDelayMsecs: Int = _
   private var servingSpeed: Float = _
   private var watermarkDelayMSecs: Int = _
 
+
   @transient
   private var reader: BufferedReader = _
 
   override def run(sourceContext: SourceContext[InEvent]): Unit = {
-    init()
-
     generateOrderedStream(sourceContext)
-
-    reader.close()
-    reader = null
   }
 
-  private def init(): Unit = {
+  override def open(parameters: Configuration): Unit = {
     dataFilePath = System.getProperty("source.inEvent.file.dataFilePath")
     maxDelayMsecs = System.getProperty("source.inEvent.file.maxDelaySecs", "2").toInt * 1000
     servingSpeed = System.getProperty("source.inEvent.file.servingSpeed", "1.0").toFloat
-
-    //val t = getRuntimeContext.getExecutionConfig.getGlobalJobParameters.asInstanceOf[ParameterTool]
 
     watermarkDelayMSecs = if (maxDelayMsecs < 10000) 10000 else maxDelayMsecs
     reader = new BufferedReader(new InputStreamReader(new FileInputStream(dataFilePath)))
@@ -55,10 +50,10 @@ class InEventFileSource extends RichSourceFunction[InEvent] with InEventSource {
         val event = json.extract[InEvent]
 
         dataStartTime = event.time
-        nextWatermark = dataStartTime - 25000 + watermarkDelayMSecs
+        nextWatermark = dataStartTime - 10000 + watermarkDelayMSecs
         nextWatermarkServingTime = toServingTime(servingStartTime, dataStartTime, nextWatermark)
-        println(dataStartTime - 25000 + ":" + Thread.currentThread().getId())
-        sourceContext.emitWatermark(new Watermark(dataStartTime - 25000))
+        println("w:" + (dataStartTime - 10000) + ":" + Thread.currentThread().getId())
+        sourceContext.emitWatermark(new Watermark(dataStartTime - 10000))
         sourceContext.collectWithTimestamp(event, event.time)
       }
     } else {
@@ -83,7 +78,7 @@ class InEventFileSource extends RichSourceFunction[InEvent] with InEventSource {
         } else if (eventWait > watermarkWait) {
           Thread.sleep(if (watermarkWait > 0) watermarkWait else 0)
 
-          println(nextWatermark + ":" + Thread.currentThread().getId())
+          println("w:" + nextWatermark + ":" + Thread.currentThread().getId())
           sourceContext.emitWatermark(new Watermark(nextWatermark))
           nextWatermark += watermarkDelayMSecs
           nextWatermarkServingTime = toServingTime(servingStartTime, dataStartTime, nextWatermark)
@@ -92,7 +87,7 @@ class InEventFileSource extends RichSourceFunction[InEvent] with InEventSource {
           Thread.sleep(if (remainWait > 0) remainWait else 0)
         } else if (eventWait == watermarkWait) {
           Thread.sleep(if (watermarkWait > 0) watermarkWait else 0)
-          println(nextWatermark)
+          println("w:" + nextWatermark + ":" + Thread.currentThread().getId())
           sourceContext.emitWatermark(new Watermark(nextWatermark))
           nextWatermark += watermarkDelayMSecs
           nextWatermarkServingTime = toServingTime(servingStartTime, dataStartTime, nextWatermark)
@@ -101,17 +96,17 @@ class InEventFileSource extends RichSourceFunction[InEvent] with InEventSource {
         sourceContext.collectWithTimestamp(event, event.time)
       }
     }
+    println("w:" + nextWatermark + ":" + Thread.currentThread().getId())
     sourceContext.emitWatermark(new Watermark(nextWatermark))
   }
 
   def toServingTime(servingStartTime: Long, dataStartTime: Long, eventTime: Long): Long = {
     val dataDiff = eventTime - dataStartTime
     servingStartTime + (dataDiff / servingSpeed).toLong
-
   }
 
-  @throws(classOf[IOException])
-  override def cancel(): Unit = {
+  @throws[Exception]
+  override def close(): Unit = {
     try {
       if (reader != null) {
         reader.close()
@@ -122,6 +117,11 @@ class InEventFileSource extends RichSourceFunction[InEvent] with InEventSource {
   }
 
   @throws(classOf[IOException])
+  override def cancel(): Unit = {
+    close()
+  }
+
+  @throws(classOf[IOException])
   private def generateStream(sourceContext: SourceContext[InEvent]): Unit = {
     implicit val formats: DefaultFormats.type = DefaultFormats
     while (reader.ready) {
@@ -129,7 +129,7 @@ class InEventFileSource extends RichSourceFunction[InEvent] with InEventSource {
       if (line != null) {
         val json = parse(line)
         val event = json.extract[InEvent]
-        sourceContext.collectWithTimestamp(event, event.time)
+        sourceContext.collect(event)
       }
     }
   }

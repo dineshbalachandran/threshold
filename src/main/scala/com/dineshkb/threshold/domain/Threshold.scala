@@ -14,6 +14,8 @@ case class ThresholdDefinition(id: String, mapping: List[String], levels: List[T
   override def hashCode(): Int = id.hashCode
 }
 
-case class ThresholdControl(id: String, breachStart: Long, breachLevel: Int, time: Long) {
+case class ThresholdControl(id: String, breachStart: Long, breachLevel: Int) {
   def breached: Boolean = breachLevel > -1
+
+  def isFirst: Boolean = breachLevel == 0
 }

@@ -7,10 +7,5 @@ trait InEventSource extends RichSourceFunction[InEvent]
 
 object InEventSource {
   @throws(classOf[Exception])
-  def apply(name: String): InEventSource = {
-    name match {
-      case "file" => new InEventFileSource
-      case _ => throw new Exception(name + " related class not found")
-    }
-  }
+  def apply(name: String): InEventSource = Class.forName(name).getConstructor().newInstance().asInstanceOf[com.dineshkb.threshold.flink.streams.InEventSource]
 }

@@ -7,11 +7,5 @@ trait OutEventSink extends RichSinkFunction[OutEvent]
 
 object OutEventSink {
   @throws(classOf[Exception])
-  def apply(name: String): OutEventSink = {
-
-    name match {
-      case "file" => new OutEventFileSink
-      case _ => throw new Exception(name + "related class not found")
-    }
-  }
+  def apply(name: String): OutEventSink = Class.forName(name).getConstructor().newInstance().asInstanceOf[com.dineshkb.threshold.flink.streams.OutEventSink]
 }

@@ -3,20 +3,15 @@ package com.dineshkb.threshold.loader
 import com.dineshkb.threshold.domain.{ThresholdControl, ThresholdDefinition}
 
 trait Loader {
-  def init(): Unit
-
+  def open(): Unit
   def getDefinition(): Map[String, ThresholdDefinition]
-
   def getControl(): scala.collection.mutable.Map[String, ThresholdControl]
+
+  def close(): Unit
 }
 
 object Loader {
 
   @throws(classOf[Exception])
-  def apply(name: String): Loader = {
-    name match {
-      case "file" => val f = new FileLoader; f.init(); f
-      case _ => throw new Exception(name + " related class not found")
-    }
-  }
+  def apply(name: String): Loader = Class.forName(name).getConstructor().newInstance().asInstanceOf[com.dineshkb.threshold.loader.Loader]
 }

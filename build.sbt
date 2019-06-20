@@ -18,16 +18,22 @@ lazy val root = (project in file(".")).
 val flinkVersion = "1.8.0"
 val liftVersion = "3.3.0"
 val scalatestVersion = "3.0.5"
+val scalikejdbcVersion = "3.3.2"
+
 val flinkDependencies = Seq(
   "org.apache.flink" %% "flink-scala" % flinkVersion % "provided",
   "org.apache.flink" %% "flink-streaming-scala" % flinkVersion % "provided",
   "org.apache.flink" %% "flink-runtime" % flinkVersion % "test" classifier "tests",
   "org.apache.flink" %% "flink-test-utils" % flinkVersion % "test")
 val lift_json = "net.liftweb" %% "lift-json" % liftVersion
+val scalatest = "org.scalatest" %% "scalatest" % scalatestVersion % "test"
+val scalikejdbc = Seq("org.scalikejdbc" %% "scalikejdbc" % scalikejdbcVersion,
+  "ch.qos.logback" % "logback-classic" % "1.2.3",
+  "com.h2database" % "h2" % "1.4.197")
 
 libraryDependencies += lift_json
 libraryDependencies += scalatest
-val scalatest = "org.scalatest" %% "scalatest" % scalatestVersion % "test"
+libraryDependencies ++= scalikejdbc
 
 assembly / mainClass := Some("ThresholdBreachIdentification")
 

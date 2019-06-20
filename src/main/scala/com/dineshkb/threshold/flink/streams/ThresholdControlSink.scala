@@ -7,13 +7,7 @@ trait ThresholdControlSink extends RichSinkFunction[ThresholdControl]
 
 object ThresholdControlSink {
   @throws(classOf[Exception])
-  def apply(name: String): ThresholdControlSink = {
-
-    name match {
-      case "file" => new ThresholdControlFileSink
-      case _ => throw new Exception(name + "related class not found")
-    }
-  }
+  def apply(name: String): ThresholdControlSink = Class.forName(name).getConstructor().newInstance().asInstanceOf[com.dineshkb.threshold.flink.streams.ThresholdControlSink]
 }
 
 

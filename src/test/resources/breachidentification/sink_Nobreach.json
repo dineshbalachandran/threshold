@@ -3,25 +3,7 @@
   "id": "TH001",
   "level": 0,
   "count": 4,
-  "start": 1559046767000,
-  "end": 1559046771000,
-  "duration": 4000
-}
-{
-  "breached": false,
-  "id": "TH001",
-  "level": 0,
-  "count": 4,
-  "start": 1559046777000,
-  "end": 1559046780000,
-  "duration": 3000
-}
-{
-  "breached": false,
-  "id": "TH001",
-  "level": 0,
-  "count": 2,
-  "start": 1559046787500,
+  "start": 1559046784000,
   "end": 1559046788500,
-  "duration": 1000
+  "duration": 4500
 }

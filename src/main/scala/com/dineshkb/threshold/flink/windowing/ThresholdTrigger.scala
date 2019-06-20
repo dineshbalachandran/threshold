@@ -17,14 +17,14 @@ class ThresholdTrigger extends Trigger[EnrichedEvent, Window] {
     println("T" + e.thDef.id + ":" + ctx.getCurrentWatermark + ":" + Thread.currentThread().getId())
 
     val th = e.thDef
-    val thc = getUpdatedThresholdControlState(e.thCtrl, ctx)
 
     th match {
       case threshold.UNDEFINED => TriggerResult.PURGE
       case _ =>
+        val thc = getUpdatedThresholdControlState(e.thCtrl, ctx)
         if (thc.breached) {
           if (furtherBreachPossible(ctx.getCurrentWatermark, th, thc)) { //continue if further breaches are possible else purge
-            if (e.inEvent.time >= ctx.getCurrentWatermark) //register event only if it is not late
+            // if (e.inEvent.time >= ctx.getCurrentWatermark) //register event only if it is not late
               th.levels.slice(thc.breachLevel + 1, th.levels.size)
                 .foreach(x => ctx.registerEventTimeTimer(thc.breachStart + x.duration))
             TriggerResult.CONTINUE
@@ -32,7 +32,7 @@ class ThresholdTrigger extends Trigger[EnrichedEvent, Window] {
           else
             TriggerResult.PURGE
         } else {
-          if (e.inEvent.time >= ctx.getCurrentWatermark) //register event only if it is not late
+          //if (e.inEvent.time >= ctx.getCurrentWatermark) //register event only if it is not late
             ctx.registerEventTimeTimer(e.inEvent.time + th.levels.head.duration)
           TriggerResult.CONTINUE
         }
@@ -42,6 +42,7 @@ class ThresholdTrigger extends Trigger[EnrichedEvent, Window] {
   private def furtherBreachPossible(time: Long, th: ThresholdDefinition, thc: ThresholdControl): Boolean =
     thc.breachStart + th.levels.last.duration >= time
 
+  //TODO: Consider implementing a State Machine (though it may not be required for this simple case)
   /*This method considers the below 7 input conditions and updates the threshold control state
     Input						                          Output
     Event		      State		      SyncAchieved	State(cs)     SyncAchieved(ss)

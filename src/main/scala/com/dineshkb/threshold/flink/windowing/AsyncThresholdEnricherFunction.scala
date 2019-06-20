@@ -14,20 +14,20 @@ class AsyncThresholdEnricherFunction extends RichAsyncFunction[InEvent, Enriched
   @transient private var controls: scala.collection.mutable.Map[String, ThresholdControl] = _
   @transient private var eoi2Th: Map[String, ThresholdDefinition] = _
   @transient private var lastRefreshed: Long = _
-  @transient private var refreshFrequency: Int = _
+  @transient private var refreshInterval: Long = _
 
-  //TODO: read refreshFrequency from a property
   @throws(classOf[Exception])
   override def open(parameters: Configuration): Unit = {
+    refreshInterval = System.getProperty("threshold.cacheRefreshIntervalMillis").toLong
     loader = Loader(System.getProperty("threshold.loader"))
-    refreshFrequency = 1000
+    loader.open()
     load()
   }
 
   private def load(): Unit = {
     eoi2Th = mapEOI2ThresholdDefinition(loader.getDefinition())
     controls = loader.getControl()
-    lastRefreshed = System.currentTimeMillis() - refreshFrequency - 1
+    lastRefreshed = System.currentTimeMillis()
   }
 
   private def mapEOI2ThresholdDefinition(definitions: Map[String, ThresholdDefinition]): Map[String, ThresholdDefinition] = {
@@ -39,7 +39,7 @@ class AsyncThresholdEnricherFunction extends RichAsyncFunction[InEvent, Enriched
 
   override def asyncInvoke(input: InEvent, resultFuture: ResultFuture[EnrichedEvent]): Unit = {
     Future {
-      if (System.currentTimeMillis() > lastRefreshed + refreshFrequency) load()
+      if (System.currentTimeMillis() > lastRefreshed + refreshInterval) load()
       val thDef = if (eoi2Th contains input.eoiId) eoi2Th(input.eoiId) else threshold.UNDEFINED
       val thCtrl = if (controls contains thDef.id) controls(thDef.id) else threshold.CNTRL_NOT_PRESENT
 
@@ -48,7 +48,7 @@ class AsyncThresholdEnricherFunction extends RichAsyncFunction[InEvent, Enriched
     }(ExecutionContext.global)
   }
 
-  override def close(): Unit = super.close()
+  override def close(): Unit = loader.close()
 }
 
 object AsyncThresholdEnricherFunction {

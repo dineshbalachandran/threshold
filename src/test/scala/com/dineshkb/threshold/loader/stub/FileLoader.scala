@@ -1,14 +1,15 @@
-package com.dineshkb.threshold.loader
+package com.dineshkb.threshold.loader.stub
 
 import com.dineshkb.threshold.domain.{ThresholdControl, ThresholdDefinition}
+import com.dineshkb.threshold.loader.Loader
 import net.liftweb.json._
 
 import scala.io.Source
 
 class FileLoader extends Loader {
 
-  @transient private var definitionfile: String = _
-  @transient private var controlfile: String = _
+  @transient private var definitionfile: String = System.getProperty("threshold.loader.file.definition")
+  @transient private var controlfile: String = System.getProperty("threshold.loader.file.control")
 
   override def getDefinition(): Map[String, ThresholdDefinition] = {
 
@@ -37,8 +38,10 @@ class FileLoader extends Loader {
     })
   }
 
-  override def init(): Unit = {
+  override def open(): Unit = {
     definitionfile = System.getProperty("threshold.loader.file.definition")
     controlfile = System.getProperty("threshold.loader.file.control")
   }
+
+  override def close(): Unit = {}
 }

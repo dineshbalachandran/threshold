@@ -31,16 +31,19 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
     if (outEvent.breached)
       context.output(OutputTag[ThresholdControl]("control"), newThc)
 
-    ls.update(events.asJava)
+    val cutOff = if (newThc.breached) newThc.breachStart else context.currentWatermark
+    ls.update(events.filter(x => x.time >= cutOff).asJava)
     cs.update(newThc)
   }
 
   private def mergeElementsAndState(ls: ListState[InEvent], elements: Iterable[EnrichedEvent], th: ThresholdDefinition, thc: ThresholdControl, context: Context) = {
-    val cutOff = if (thc.breached) thc.breachStart else context.currentWatermark - th.levels.head.duration
+    //val cutOff = if (thc.breached) thc.breachStart else context.currentWatermark - th.levels.head.duration
     val l = new scala.collection.mutable.ListBuffer[InEvent]
 
-    l ++= elements.filter(x => x.inEvent.time >= cutOff).map(_.inEvent)
-    ls.get.forEach(x => if (x.time >= cutOff) l += x)
+    //l ++= elements.filter(x => x.inEvent.time >= cutOff).map(_.inEvent)
+    l ++= elements.map(_.inEvent)
+    //ls.get.forEach(x => if (x.time >= cutOff) l += x)
+    ls.get.forEach(x => l += x)
 
     l.toList.sortBy(_.time)
   }
@@ -53,12 +56,12 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
 
   private def breachNA(th: ThresholdDefinition): OutEvent = OutEvent(breached = false, th.id, level = 0, -1, -1, -1, -1)
 
-  //TODO: instead of end 0 pass end th.levels.head.count after the recent changes are tested
-  private def firstLevelBreach(th: ThresholdDefinition, events: List[InEvent]): OutEvent = {
-    if (events.size < th.levels.head.count)
-      firstlevel(0, events.size, th.id, events, th.levels.head)
-    else
-      firstlevel(0, 0, th.id, events, th.levels.head)
+  private def generateThresholdControl(th: ThresholdDefinition, thc: ThresholdControl, o: OutEvent, context: Context): ThresholdControl = {
+    if (o.breached) {
+      val breachStart = if (thc.breached) thc.breachStart else o.start
+      ThresholdControl(th.id, breachStart, o.level)
+    } else
+      thc
   }
 
   /** a recursive sliding window implementation */
@@ -85,12 +88,11 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
     }
   }
 
-  private def generateThresholdControl(th: ThresholdDefinition, thc: ThresholdControl, o: OutEvent, context: Context): ThresholdControl = {
-    if (o.breached) {
-      val breachStart = if (thc.breached) thc.breachStart else o.start
-      ThresholdControl(th.id, breachStart, o.level, context.currentProcessingTime)
-    } else
-      thc
+  private def firstLevelBreach(th: ThresholdDefinition, events: List[InEvent]): OutEvent = {
+    if (events.size < th.levels.head.count)
+      firstlevel(0, events.size, th.id, events, th.levels.head)
+    else
+      firstlevel(0, th.levels.head.count - 1, th.id, events, th.levels.head)
   }
 
 }

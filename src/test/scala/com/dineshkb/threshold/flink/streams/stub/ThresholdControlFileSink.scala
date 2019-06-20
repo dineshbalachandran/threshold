@@ -1,8 +1,9 @@
-package com.dineshkb.threshold.flink.streams
+package com.dineshkb.threshold.flink.streams.stub
 
 import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter}
 
 import com.dineshkb.threshold.domain.ThresholdControl
+import com.dineshkb.threshold.flink.streams.ThresholdControlSink
 import net.liftweb.json.Serialization.write
 import net.liftweb.json._
 import org.apache.flink.configuration.Configuration
@@ -10,18 +11,11 @@ import org.apache.flink.streaming.api.functions.sink.RichSinkFunction
 
 class ThresholdControlFileSink extends RichSinkFunction[ThresholdControl] with ThresholdControlSink {
 
-  private var dataFilePath: String = _
-
-
-  @transient
-  private var writer: BufferedWriter = _
+  @transient private var dataFilePath: String = _
+  @transient private var writer: BufferedWriter = _
 
   @throws[Exception]
   override def open(parameters: Configuration): Unit = {
-    init()
-  }
-
-  private def init(): Unit = {
     dataFilePath = System.getProperty("sink.thresholdControl.file.dataFilePath")
     writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(dataFilePath, true)))
   }

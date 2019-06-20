@@ -9,11 +9,14 @@ import com.dineshkb.threshold.flink.windowing.{AsyncThresholdEnricherFunction, B
 import net.liftweb.json.{DefaultFormats, parse}
 import org.apache.flink.api.scala._
 import org.apache.flink.streaming.api.TimeCharacteristic
+import org.apache.flink.streaming.api.functions.AssignerWithPunctuatedWatermarks
 import org.apache.flink.streaming.api.scala.{AsyncDataStream, DataStream, OutputTag, StreamExecutionEnvironment}
+import org.apache.flink.streaming.api.watermark.Watermark
 import org.apache.flink.streaming.api.windowing.assigners.GlobalWindows
 import org.apache.flink.test.util.AbstractTestBase
 import org.junit.Assert._
 import org.junit.Test
+import scalikejdbc._
 
 class BreachIdentificationTest extends AbstractTestBase {
 
@@ -40,68 +43,7 @@ class BreachIdentificationTest extends AbstractTestBase {
     assertEquals(0, control)
   }
 
-  private def execute(): Unit = {
-    val env = StreamExecutionEnvironment.getExecutionEnvironment
-    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    env.setParallelism(1)
 
-    val src = InEventSource(System.getProperty("source.inEvent"))
-    val eventSnk = OutEventSink(System.getProperty("sink.outEvent"))
-    val cntrlSnk = ThresholdControlSink(System.getProperty("sink.thresholdControl"))
-
-    val in: DataStream[InEvent] = env.addSource(src)
-    val enriched = AsyncDataStream.unorderedWait(in, new AsyncThresholdEnricherFunction, 1000, TimeUnit.MILLISECONDS, 100)
-
-    val out: DataStream[OutEvent] = enriched
-      .keyBy(_.thDef)
-      .window(GlobalWindows.create())
-      .trigger(ThresholdTrigger())
-      .process(BreachIdentificationFunction())
-
-    val sidetag = OutputTag[ThresholdControl]("control")
-    val side: DataStream[ThresholdControl] = out.getSideOutput(sidetag)
-
-    side.addSink(cntrlSnk)
-    out.addSink(eventSnk)
-
-    env.execute()
-  }
-
-  private def commonInit(): Unit = {
-
-    System.setProperty("source.inEvent.file.servingSpeed", "1.0")
-    System.setProperty("source.inEvent.file.maxDelaySecs", "0")
-
-    System.setProperty("source.inEvent", "file")
-    System.setProperty("sink.outEvent", "file")
-    System.setProperty("sink.thresholdControl", "file")
-    System.setProperty("threshold.loader", "file")
-
-    System.setProperty("threshold.loader.file.definition", """.\src\test\resources\breachidentification\definition.json""")
-    System.setProperty("threshold.loader.file.control", """.\src\test\resources\breachidentification\control.json""")
-  }
-
-  private def cleanUp(f: List[String]): Unit = {
-    f.foreach(new File(_).delete())
-  }
-
-  private def readOutEvent(dataFilePath: String): List[OutEvent] = {
-    implicit val formats: DefaultFormats.type = DefaultFormats
-    val reader = scala.io.Source.fromFile(dataFilePath)
-    val i = reader.getLines().map[OutEvent](x => parse(x).extract[OutEvent]).toList
-    reader.close()
-    i
-  }
-
-  //TODO: add test for threshold control reload and closure
-
-  private def readThresholdControl(dataFilePath: String): List[ThresholdControl] = {
-    implicit val formats: DefaultFormats.type = DefaultFormats
-    val reader = scala.io.Source.fromFile(dataFilePath)
-    val i = reader.getLines().map[ThresholdControl](x => parse(x).extract[ThresholdControl]).toList
-    reader.close()
-    i
-  }
 
   //first level satisfied, second and third levels satisfied as well - all three levels breached
   @Test
@@ -204,4 +146,175 @@ class BreachIdentificationTest extends AbstractTestBase {
     assertEquals(0, breach)
     assertEquals(0, control)
   }
+
+  @Test
+  def testDBSink(): Unit = {
+    commonDBInit()
+    ConnectionPool.add('controltest, "jdbc:h2:mem:controltest", "user", "pass")
+    createTables()
+
+    cleanUp(List(System.getProperty("sink.outEvent.file.dataFilePath")))
+
+    execute()
+
+    val breach = readOutEvent(System.getProperty("sink.outEvent.file.dataFilePath"))
+      .filter(x => {
+        x.breached
+      }).map(_.level).sorted
+    val control = getThresholdControl()
+      .filter(x => {
+        x.breached
+      }).map(_.breachLevel).sorted
+
+    ConnectionPool.close('controltest)
+
+    assertEquals(List(0, 1, 2), breach)
+    assertEquals(List(0, 1, 2), control)
+  }
+
+  private def execute(): Unit = {
+    val env = StreamExecutionEnvironment.getExecutionEnvironment
+    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+    env.setParallelism(1)
+
+    val src = InEventSource(System.getProperty("source.inEvent"))
+    val eventSnk = OutEventSink(System.getProperty("sink.outEvent"))
+    val cntrlSnk = ThresholdControlSink(System.getProperty("sink.thresholdControl"))
+
+    //val in: DataStream[InEvent] = env.addSource(src)
+
+    //TODO: remove dependency on system time
+    val in: DataStream[InEvent] = env
+      .addSource(src)
+      .assignTimestampsAndWatermarks(new AssignerWithPunctuatedWatermarks[InEvent] {
+        val watermarkDelay = 10000L
+        var nextWaterMarkTime: Long = -1L
+        var maxTime: Long = -1L
+
+        override def extractTimestamp(element: InEvent, previousElementTimestamp: Long): Long = {
+          maxTime = if (element.time > maxTime) element.time else maxTime
+          element.time
+        }
+
+        override def checkAndGetNextWatermark(lastElement: InEvent, extractedTimestamp: Long): Watermark = {
+          nextWaterMarkTime = if (nextWaterMarkTime < 0) extractedTimestamp - watermarkDelay else nextWaterMarkTime
+          if (maxTime >= nextWaterMarkTime + watermarkDelay) {
+            val w = new Watermark(nextWaterMarkTime)
+            nextWaterMarkTime += watermarkDelay
+            w
+          } else {
+            null
+          }
+        }
+      })
+
+    val enriched = AsyncDataStream.unorderedWait(in, new AsyncThresholdEnricherFunction, 1000, TimeUnit.MILLISECONDS, 100)
+
+    val out: DataStream[OutEvent] = enriched
+      .keyBy(_.thDef)
+      .window(GlobalWindows.create())
+      .trigger(ThresholdTrigger())
+      .process(BreachIdentificationFunction())
+
+    val sidetag = OutputTag[ThresholdControl]("control")
+    val side: DataStream[ThresholdControl] = out.getSideOutput(sidetag)
+
+    side.addSink(cntrlSnk)
+    out.addSink(eventSnk)
+
+    env.execute()
+  }
+
+  private def commonInit(): Unit = {
+    System.setProperty("source.inEvent.file.servingSpeed", "1.0")
+    System.setProperty("source.inEvent.file.maxDelaySecs", "0")
+
+    System.setProperty("source.inEvent", "com.dineshkb.threshold.flink.streams.stub.InEventFileSource")
+    System.setProperty("sink.outEvent", "com.dineshkb.threshold.flink.streams.stub.OutEventFileSink")
+    System.setProperty("sink.thresholdControl", "com.dineshkb.threshold.flink.streams.stub.ThresholdControlFileSink")
+    System.setProperty("threshold.loader", "com.dineshkb.threshold.loader.stub.FileLoader")
+    System.setProperty("threshold.loader.file.definition", """.\src\test\resources\breachidentification\definition.json""")
+    System.setProperty("threshold.loader.file.control", """.\src\test\resources\breachidentification\control.json""")
+
+    System.setProperty("threshold.cacheRefreshIntervalMillis", "5000")
+  }
+
+  private def cleanUp(f: List[String]): Unit = {
+    f.foreach(new File(_).delete())
+  }
+
+  private def readOutEvent(dataFilePath: String): List[OutEvent] = {
+    implicit val formats: DefaultFormats.type = DefaultFormats
+    val reader = scala.io.Source.fromFile(dataFilePath)
+    val i = reader.getLines().map[OutEvent](x => parse(x).extract[OutEvent]).toList
+    reader.close()
+    i
+  }
+
+  private def readThresholdControl(dataFilePath: String): List[ThresholdControl] = {
+    implicit val formats: DefaultFormats.type = DefaultFormats
+    val reader = scala.io.Source.fromFile(dataFilePath)
+    val i = reader.getLines().map[ThresholdControl](x => parse(x).extract[ThresholdControl]).toList
+    reader.close()
+    i
+  }
+
+  private def commonDBInit(): Unit = {
+    System.setProperty("source.inEvent", "com.dineshkb.threshold.flink.streams.stub.InEventFileSource")
+    System.setProperty("sink.outEvent", "com.dineshkb.threshold.flink.streams.stub.OutEventFileSink")
+    System.setProperty("sink.thresholdControl", "com.dineshkb.threshold.flink.streams.ThresholdControlDBSink")
+    System.setProperty("source.inEvent.file.servingSpeed", "1.0")
+    System.setProperty("source.inEvent.file.maxDelaySecs", "0")
+
+    System.setProperty("source.inEvent.file.dataFilePath", """.\src\test\resources\breachidentification\source_AllLevelbreach.json""")
+    System.setProperty("sink.outEvent.file.dataFilePath", """.\src\test\resources\breachidentification\sink_AllLevelbreach.json""")
+
+    System.setProperty("threshold.loader", "com.dineshkb.threshold.loader.stub.FileLoader")
+    System.setProperty("threshold.loader.file.definition", """.\src\test\resources\breachidentification\definition.json""")
+    System.setProperty("threshold.loader.file.control", """.\src\test\resources\breachidentification\control.json""")
+
+    System.setProperty("sink.thresholdControl.db.class", "org.h2.Driver")
+    System.setProperty("sink.thresholdControl.db.url", "jdbc:h2:mem:controltest")
+    System.setProperty("sink.thresholdControl.db.user", "user")
+    System.setProperty("sink.thresholdControl.db.password", "pass")
+    System.setProperty("sink.thresholdControl.db.pool.initialSize", "1")
+    System.setProperty("sink.thresholdControl.db.pool.maxSize", "1")
+    System.setProperty("sink.thresholdControl.db.pool.connectionTimeoutMillis", "3000")
+
+    System.setProperty("threshold.cacheRefreshIntervalMillis", "5000")
+  }
+
+  def createTables(): Unit = {
+    sql"""
+    create table thresholdcontrol (
+      controlId identity not null primary key,
+      id varchar(8) not null,
+      breachStart bigint not null,
+      status varchar(8) not null,
+      createdAt timestamp not null,
+      unique (controlId, id)
+    )""".execute().apply()(NamedAutoSession('controltest))
+
+    sql"""
+    create table thresholdcontrollevel (
+      controlId bigint not null,
+      breachLevel int not null,
+      createdAt timestamp not null,
+      foreign key (controlId) references thresholdcontrol(controlId),
+      primary key (controlId, breachlevel)
+    )""".execute().apply()(NamedAutoSession('controltest))
+  }
+
+  def getThresholdControl(): List[ThresholdControl] = {
+    sql"""select c.id as id, c.breachStart as breachStart, l.breachLevel as breachLevel
+        from (select controlId, breachLevel
+               from thresholdcontrollevel) as l
+        inner join thresholdcontrol as c on l.controlId = c.controlId""".foldLeft(scala.collection.mutable.ListBuffer[ThresholdControl]())((l, rs) => {
+      val id = rs.string("id")
+      val control = ThresholdControl(id, rs.long("breachStart"), rs.int("breachLevel"))
+      l += control
+    })(NamedAutoSession('controltest)).toList
+  }
+
+  //TODO: add test for threshold control reload and closure
 }

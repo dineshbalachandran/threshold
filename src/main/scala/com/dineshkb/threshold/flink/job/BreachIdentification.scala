@@ -1,12 +1,15 @@
 package com.dineshkb.threshold.flink.job
 
+import java.util.Properties
 import java.util.concurrent.TimeUnit
 
 import com.dineshkb.threshold.domain.{InEvent, OutEvent, ThresholdControl}
 import com.dineshkb.threshold.flink.streams.{InEventSource, OutEventSink, ThresholdControlSink}
 import com.dineshkb.threshold.flink.windowing.{AsyncThresholdEnricherFunction, BreachIdentificationFunction, ThresholdTrigger}
 import org.apache.flink.streaming.api.TimeCharacteristic
+import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks
 import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.api.watermark.Watermark
 import org.apache.flink.streaming.api.windowing.assigners.GlobalWindows
 
 /**
@@ -22,31 +25,41 @@ import org.apache.flink.streaming.api.windowing.assigners.GlobalWindows
 object BreachIdentification {
 
   def main(args: Array[String]): Unit = {
+    setProperties()
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    env.setParallelism(1)
-
-
-    //val propertiesFilePath = "/home/sam/flink/myjob.properties"
-    //val parameter = ParameterTool.fromPropertiesFile(propertiesFilePath)
-
-    testInit()
+    env.setParallelism(System.getProperty("job.parallelism").toInt)
+    env.getConfig.setAutoWatermarkInterval(System.getProperty("source.watermarkIntervalMillis").toLong)
 
     val src = InEventSource(System.getProperty("source.inEvent"))
     val eventSnk = OutEventSink(System.getProperty("sink.outEvent"))
     val cntrlSnk = ThresholdControlSink(System.getProperty("sink.thresholdControl"))
 
-    //TODO: update tests to check for control sink values
-    //TODO: Use the ParameterTool to read in properties and remove the testInit() function
     //TODO: add custom timestamp and watermark assigner
     //TODO: add kinesis source and sink
-    //TODO: add a DB persister class for threshold definition and control classes, possibly using slick
-    //TODO: Move the test source and sink classes to the test folder
-    //TODO: instantiate the loader, source and sink classes using class names
+    //TODO: add logging
+    //TODO: Remove println statements
 
-    val in: DataStream[InEvent] = env.addSource(src)
-    val enriched = AsyncDataStream.unorderedWait(in, AsyncThresholdEnricherFunction(), 5000, TimeUnit.MILLISECONDS, 100)
+    val in: DataStream[InEvent] = env
+      .addSource(src)
+      .assignTimestampsAndWatermarks(
+        new AssignerWithPeriodicWatermarks[InEvent] {
+          val watermarkInterval: Long = System.getProperty("source.watermarkIntervalMillis").toLong
+          var currentWaterMark: Long = -1L
+
+          override def extractTimestamp(element: InEvent, previousElementTimestamp: Long): Long = {
+            if (currentWaterMark == -1L)
+              currentWaterMark = element.time - watermarkInterval
+            element.time
+          }
+
+          override def getCurrentWatermark: Watermark = new Watermark(currentWaterMark + watermarkInterval)
+        })
+
+    val enriched = AsyncDataStream.unorderedWait(in, AsyncThresholdEnricherFunction(),
+      System.getProperty("threshold.enricher.timeoutMillis").toLong, TimeUnit.MILLISECONDS,
+      System.getProperty("threshold.enricher.capacity").toInt)
 
     val out: DataStream[OutEvent] = enriched
       .keyBy(_.thDef)
@@ -64,21 +77,10 @@ object BreachIdentification {
     env.execute("Threshold Breach Identification")
   }
 
-
-  private def testInit(): Unit = {
-    System.setProperty("source.file.dataFilePath", "c:\\flink\\input_nobreach.txt")
-    System.setProperty("source.file.servingSpeed", "1.0")
-    System.setProperty("source.file.maxDelaySecs", "0")
-
-    System.setProperty("sink.file.dataFilePath", "c:\\flink\\out_nobreach.txt")
-
-    System.setProperty("source", "file")
-    System.setProperty("sink", "file")
-    System.setProperty("controlsink", "file")
-    System.setProperty("threshold.loader", "file")
-
-    System.setProperty("threshold.loader.file.definition", "c:\\flink\\threshold.json")
-    System.setProperty("threshold.loader.file.control.input", "c:\\flink\\controlin.json")
-    System.setProperty("controlSink.file.dataFilePath", "c:\\flink\\controlout.json")
+  def setProperties(): Unit = {
+    val in = getClass.getClassLoader.getResourceAsStream("application.properties")
+    val prop = new Properties(System.getProperties)
+    prop.load(in)
+    System.setProperties(prop)
   }
 }
