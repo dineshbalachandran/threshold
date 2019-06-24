@@ -27,8 +27,8 @@ class InEventFileSource extends InEventSource {
 
   override def open(parameters: Configuration): Unit = {
     dataFilePath = System.getProperty("source.inEvent.file.dataFilePath")
-    maxDelayMsecs = System.getProperty("source.inEvent.file.maxDelaySecs", "2").toInt * 1000
-    servingSpeed = System.getProperty("source.inEvent.file.servingSpeed", "1.0").toFloat
+    maxDelayMsecs = 1000
+    servingSpeed = 1.0f
 
     watermarkDelayMSecs = if (maxDelayMsecs < 10000) 10000 else maxDelayMsecs
     reader = new BufferedReader(new InputStreamReader(new FileInputStream(dataFilePath)))

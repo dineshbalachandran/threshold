@@ -4,13 +4,11 @@ import java.util.Properties
 import java.util.concurrent.TimeUnit
 
 import com.dineshkb.threshold.domain.{InEvent, OutEvent, ThresholdControl}
-import com.dineshkb.threshold.flink.streams.{InEventSource, OutEventSink, ThresholdControlSink}
+import com.dineshkb.threshold.flink.streams.{InEventSource, OutEventSink, PunctuatedAssigner, ThresholdControlSink}
 import com.dineshkb.threshold.flink.windowing.{AsyncThresholdEnricherFunction, BreachIdentificationFunction, ThresholdTrigger}
-import org.apache.flink.streaming.api.TimeCharacteristic
-import org.apache.flink.streaming.api.functions.AssignerWithPunctuatedWatermarks
 import org.apache.flink.streaming.api.scala._
-import org.apache.flink.streaming.api.watermark.Watermark
 import org.apache.flink.streaming.api.windowing.assigners.GlobalWindows
+import org.apache.flink.streaming.api.{CheckpointingMode, TimeCharacteristic}
 
 /**
   * You can also generate a .jar file that you can submit on your Flink
@@ -25,11 +23,8 @@ import org.apache.flink.streaming.api.windowing.assigners.GlobalWindows
 object BreachIdentification {
 
   def main(args: Array[String]): Unit = {
-    setProperties()
-
-    val env = StreamExecutionEnvironment.getExecutionEnvironment
-    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    env.setParallelism(System.getProperty("job.parallelism").toInt)
+    setProperties(args(0))
+    val env = getExecutionEnvironment()
 
     val src = InEventSource(System.getProperty("source.inEvent"))
     val eventSnk = OutEventSink(System.getProperty("sink.outEvent"))
@@ -40,27 +35,9 @@ object BreachIdentification {
 
     val in: DataStream[InEvent] = env
       .addSource(src)
-      .assignTimestampsAndWatermarks(new AssignerWithPunctuatedWatermarks[InEvent] {
-        val watermarkDelay = System.getProperty("source.watermarkDelayMillis").toLong
-        var nextWaterMarkTime: Long = -1L
-        var maxTime: Long = -1L
-
-        override def extractTimestamp(element: InEvent, previousElementTimestamp: Long): Long = {
-          maxTime = if (element.time > maxTime) element.time else maxTime
-          element.time
-        }
-
-        override def checkAndGetNextWatermark(lastElement: InEvent, extractedTimestamp: Long): Watermark = {
-          nextWaterMarkTime = if (nextWaterMarkTime < 0) extractedTimestamp - watermarkDelay else nextWaterMarkTime
-          if (maxTime >= nextWaterMarkTime + watermarkDelay) {
-            val w = new Watermark(nextWaterMarkTime)
-            nextWaterMarkTime += watermarkDelay
-            w
-          } else {
-            null
-          }
-        }
-      })
+      .uid("source-id")
+      .assignTimestampsAndWatermarks(new PunctuatedAssigner)
+      .uid("watermark-id")
 
     val enriched = AsyncDataStream.unorderedWait(in, AsyncThresholdEnricherFunction(),
       System.getProperty("threshold.enricher.timeoutMillis").toLong, TimeUnit.MILLISECONDS,
@@ -71,19 +48,40 @@ object BreachIdentification {
       .window(GlobalWindows.create())
       .trigger(ThresholdTrigger())
       .process(BreachIdentificationFunction())
-      .filter(_.breached)
+      .uid("identifier-id")
 
     val sidetag = OutputTag[ThresholdControl]("control")
-    val side: DataStream[ThresholdControl] = out.getSideOutput(sidetag).filter(_.breached)
+    val side: DataStream[ThresholdControl] = out.getSideOutput(sidetag)
 
-    out.addSink(eventSnk)
-    side.addSink(cntrlSnk)
+    side.addSink(cntrlSnk).setParallelism(1)
+    out.addSink(eventSnk).setParallelism(1)
 
     env.execute("Threshold Breach Identification")
   }
 
-  def setProperties(): Unit = {
-    val in = getClass.getClassLoader.getResourceAsStream("application.properties")
+  private def getExecutionEnvironment(): StreamExecutionEnvironment = {
+    val env = StreamExecutionEnvironment.getExecutionEnvironment
+
+    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+
+    env.setParallelism(System.getProperty("job.parallelism").toInt)
+
+    //checkpointing
+    env.enableCheckpointing(System.getProperty("job.checkpointingMillis").toLong)
+    env.getCheckpointConfig.setCheckpointingMode(CheckpointingMode.EXACTLY_ONCE)
+    env.getCheckpointConfig.setMinPauseBetweenCheckpoints(System.getProperty("job.setMinPauseBetweenCheckpointsMillis").toLong)
+    // checkpoints have to complete within one minute, or are discarded
+    env.getCheckpointConfig.setCheckpointTimeout(System.getProperty("job.setCheckpointTimeoutMillis").toLong)
+    // prevent the tasks from failing if an error happens in their checkpointing, the checkpoint will just be declined.
+    env.getCheckpointConfig.setFailOnCheckpointingErrors(false)
+    env.getCheckpointConfig.setMaxConcurrentCheckpoints(1)
+
+    env
+  }
+
+  @throws[Exception]
+  def setProperties(env: String): Unit = {
+    val in = getClass.getClassLoader.getResourceAsStream("application." + env + ".properties")
     val prop = new Properties(System.getProperties)
     prop.load(in)
     System.setProperties(prop)

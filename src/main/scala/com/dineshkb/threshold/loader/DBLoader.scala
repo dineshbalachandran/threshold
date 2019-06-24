@@ -7,6 +7,9 @@ import scala.collection.mutable
 
 class DBLoader extends Loader {
 
+  @transient
+  val connectName = "loader" + Thread.currentThread.getId
+
   @throws[Exception]
   override def open(): Unit = {
     Class.forName(System.getProperty("threshold.loader.db.class"))
@@ -17,7 +20,7 @@ class DBLoader extends Loader {
       connectionTimeoutMillis = System.getProperty("threshold.loader.db.pool.connectionTimeoutMillis").toLong,
       validationQuery = "select 1 from dual")
 
-    ConnectionPool.add('loader, System.getProperty("threshold.loader.db.url"),
+    ConnectionPool.add(connectName, System.getProperty("threshold.loader.db.url"),
       System.getProperty("threshold.loader.db.user"),
       System.getProperty("threshold.loader.db.password"),
       settings)
@@ -29,13 +32,13 @@ class DBLoader extends Loader {
       val id = rs.string("id")
       val maps = rs.string("eoiId") :: (if (m contains id) m(id) else List())
       m += (id -> maps)
-    })(NamedAutoSession('loader))
+    })(NamedAutoSession(connectName))
 
     val levels = sql"select * from thresholdlevel order by id, level desc".foldLeft(scala.collection.mutable.Map[String, List[ThresholdLevel]]())((m, rs) => {
       val id = rs.string("id")
       val levels = ThresholdLevel(rs.int("count"), rs.int("duration")) :: (if (m contains id) m(id) else List())
       m += (id -> levels)
-    })(NamedAutoSession('loader))
+    })(NamedAutoSession(connectName))
 
     mappings.foldLeft(scala.collection.mutable.Map[String, ThresholdDefinition]())((definitions, e) => {
       val (id, eoiIds) = (e._1, e._2)
@@ -52,11 +55,11 @@ class DBLoader extends Loader {
       val id = rs.string("id")
       val control = ThresholdControl(id, rs.long("breachStart"), rs.int("breachLevel"))
       m += (id -> control)
-    })(NamedAutoSession('loader))
+    })(NamedAutoSession(connectName))
   }
 
   @throws[Exception]
   override def close(): Unit = {
-    ConnectionPool.close('loader)
+    ConnectionPool.close(connectName)
   }
 }

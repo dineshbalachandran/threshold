@@ -8,8 +8,8 @@ import scala.io.Source
 
 class FileLoader extends Loader {
 
-  @transient private var definitionfile: String = System.getProperty("threshold.loader.file.definition")
-  @transient private var controlfile: String = System.getProperty("threshold.loader.file.control")
+  @transient private var definitionfile: String = _
+  @transient private var controlfile: String = _
 
   override def getDefinition(): Map[String, ThresholdDefinition] = {
 
