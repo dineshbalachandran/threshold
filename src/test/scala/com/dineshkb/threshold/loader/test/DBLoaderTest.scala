@@ -10,7 +10,7 @@ class DBLoaderTest extends FlatSpec with Matchers {
 
   override def withFixture(test: NoArgTest): Outcome = {
     setProperties()
-    ConnectionPool.add('loadertest, "jdbc:h2:mem:loader", "user", "pass")
+    ConnectionPool.add('loadertest, "jdbc:h2:mem:threshold", "user", "pass")
     createTables()
     setUpData()
 
