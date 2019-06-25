@@ -1,4 +1,4 @@
-package com.dineshkb.threshold.flink.streams
+package com.dineshkb.threshold.flink.streams.sink
 
 import com.dineshkb.threshold.domain.ThresholdControl
 import org.apache.flink.configuration.Configuration

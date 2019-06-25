@@ -4,7 +4,9 @@ import java.util.Properties
 import java.util.concurrent.TimeUnit
 
 import com.dineshkb.threshold.domain.{InEvent, OutEvent, ThresholdControl}
-import com.dineshkb.threshold.flink.streams.{InEventSource, OutEventSink, PunctuatedAssigner, ThresholdControlSink}
+import com.dineshkb.threshold.flink.streams.PunctuatedAssigner
+import com.dineshkb.threshold.flink.streams.sink.{OutEventSink, ThresholdControlSink}
+import com.dineshkb.threshold.flink.streams.source.InEventSource
 import com.dineshkb.threshold.flink.windowing.{AsyncThresholdEnricherFunction, BreachIdentificationFunction, ThresholdTrigger}
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.windowing.assigners.GlobalWindows
@@ -30,7 +32,6 @@ object BreachIdentification {
     val eventSnk = OutEventSink(System.getProperty("sink.outEvent"))
     val cntrlSnk = ThresholdControlSink(System.getProperty("sink.thresholdControl"))
 
-    //TODO: add kinesis source and sink
     //TODO: add logging
 
     val in: DataStream[InEvent] = env
@@ -39,11 +40,17 @@ object BreachIdentification {
       .assignTimestampsAndWatermarks(new PunctuatedAssigner)
       .uid("watermark-id")
 
-    val enriched = AsyncDataStream.unorderedWait(in, AsyncThresholdEnricherFunction(),
-      System.getProperty("threshold.enricher.timeoutMillis").toLong, TimeUnit.MILLISECONDS,
-      System.getProperty("threshold.enricher.capacity").toInt)
+    val enriched = if (System.getProperty("threshold.enricher.ordered") == "false")
+                      AsyncDataStream.unorderedWait(in, AsyncThresholdEnricherFunction(),
+                        System.getProperty("threshold.enricher.timeoutMillis").toLong, TimeUnit.MILLISECONDS,
+                        System.getProperty("threshold.enricher.capacity").toInt)
+                  else
+                      AsyncDataStream.orderedWait(in, AsyncThresholdEnricherFunction(),
+                        System.getProperty("threshold.enricher.timeoutMillis").toLong, TimeUnit.MILLISECONDS,
+                        System.getProperty("threshold.enricher.capacity").toInt)
 
     val out: DataStream[OutEvent] = enriched
+      .uid("enriched-source-id")
       .keyBy(_.thDef)
       .window(GlobalWindows.create())
       .trigger(ThresholdTrigger())

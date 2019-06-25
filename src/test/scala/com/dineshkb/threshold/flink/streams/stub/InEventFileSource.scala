@@ -4,13 +4,14 @@ import java.io.{BufferedReader, FileInputStream, IOException, InputStreamReader}
 import java.util.Calendar
 
 import com.dineshkb.threshold.domain.InEvent
-import com.dineshkb.threshold.flink.streams.InEventSource
+import com.dineshkb.threshold.flink.streams.source.InEventSource
 import net.liftweb.json.{DefaultFormats, parse}
 import org.apache.flink.configuration.Configuration
+import org.apache.flink.streaming.api.functions.source.RichSourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.streaming.api.watermark.Watermark
 
-class InEventFileSource extends InEventSource {
+class InEventFileSource extends RichSourceFunction[InEvent] with InEventSource {
 
   private var dataFilePath: String = _
   private var maxDelayMsecs: Int = _

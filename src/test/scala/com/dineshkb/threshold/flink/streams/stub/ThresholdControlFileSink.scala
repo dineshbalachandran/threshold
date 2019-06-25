@@ -3,7 +3,7 @@ package com.dineshkb.threshold.flink.streams.stub
 import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter}
 
 import com.dineshkb.threshold.domain.ThresholdControl
-import com.dineshkb.threshold.flink.streams.ThresholdControlSink
+import com.dineshkb.threshold.flink.streams.sink.ThresholdControlSink
 import net.liftweb.json.Serialization.write
 import net.liftweb.json._
 import org.apache.flink.configuration.Configuration

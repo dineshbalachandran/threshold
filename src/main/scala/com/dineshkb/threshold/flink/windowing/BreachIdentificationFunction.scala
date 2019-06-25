@@ -39,7 +39,7 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
     cs.update(newThc)
   }
 
-  private def mergeElementsAndState(ls: ListState[InEvent], elements: Iterable[EnrichedEvent], th: ThresholdDefinition, thc: ThresholdControl, context: Context) = {
+  private def mergeElementsAndState(ls: ListState[InEvent], elements: Iterable[EnrichedEvent], th: ThresholdDefinition, thc: ThresholdControl, context: Context): Vector[InEvent] = {
     val l = new scala.collection.mutable.ListBuffer[InEvent]
     l ++= elements.map(_.inEvent)
     ls.get.forEach(x => l += x)
