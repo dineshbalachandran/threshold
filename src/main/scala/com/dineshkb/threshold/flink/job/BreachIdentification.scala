@@ -7,21 +7,12 @@ import com.dineshkb.threshold.domain.{InEvent, OutEvent, ThresholdControl}
 import com.dineshkb.threshold.flink.streams.PunctuatedAssigner
 import com.dineshkb.threshold.flink.streams.sink.{OutEventSink, ThresholdControlSink}
 import com.dineshkb.threshold.flink.streams.source.InEventSource
-import com.dineshkb.threshold.flink.windowing.{AsyncThresholdEnricherFunction, BreachIdentificationFunction, ThresholdTrigger}
+import com.dineshkb.threshold.flink.windowing.{AsyncThresholdEnricherFunction, BreachIdentificationFunction}
 import org.apache.flink.streaming.api.scala._
-import org.apache.flink.streaming.api.windowing.assigners.GlobalWindows
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
+import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.{CheckpointingMode, TimeCharacteristic}
 
-/**
-  * You can also generate a .jar file that you can submit on your Flink
-  * cluster. Just type
-  * {{{
-  *   sbt clean assembly
-  * }}}
-  * in the projects root directory. You will find the jar in
-  * target/scala-2.11/Flink\ Project-assembly-0.1-SNAPSHOT.jar
-  *
-  */
 object BreachIdentification {
 
   def main(args: Array[String]): Unit = {
@@ -31,6 +22,8 @@ object BreachIdentification {
     val src = InEventSource(System.getProperty("source.inEvent"))
     val eventSnk = OutEventSink(System.getProperty("sink.outEvent"))
     val cntrlSnk = ThresholdControlSink(System.getProperty("sink.thresholdControl"))
+
+    val watermarkDelay = System.getProperty("source.watermarkDelayMillis").toLong
 
     //TODO: add logging
 
@@ -52,8 +45,7 @@ object BreachIdentification {
     val out: DataStream[OutEvent] = enriched
       .uid("enriched-source-id")
       .keyBy(_.thDef)
-      .window(GlobalWindows.create())
-      .trigger(ThresholdTrigger())
+      .window(TumblingEventTimeWindows.of(Time.milliseconds(watermarkDelay)))
       .process(BreachIdentificationFunction())
       .uid("identifier-id")
 
@@ -73,13 +65,10 @@ object BreachIdentification {
 
     env.setParallelism(System.getProperty("job.parallelism").toInt)
 
-    //checkpointing
     env.enableCheckpointing(System.getProperty("job.checkpointingMillis").toLong)
     env.getCheckpointConfig.setCheckpointingMode(CheckpointingMode.EXACTLY_ONCE)
     env.getCheckpointConfig.setMinPauseBetweenCheckpoints(System.getProperty("job.setMinPauseBetweenCheckpointsMillis").toLong)
-    // checkpoints have to complete within one minute, or are discarded
     env.getCheckpointConfig.setCheckpointTimeout(System.getProperty("job.setCheckpointTimeoutMillis").toLong)
-    // prevent the tasks from failing if an error happens in their checkpointing, the checkpoint will just be declined.
     env.getCheckpointConfig.setFailOnCheckpointingErrors(false)
     env.getCheckpointConfig.setMaxConcurrentCheckpoints(1)
 

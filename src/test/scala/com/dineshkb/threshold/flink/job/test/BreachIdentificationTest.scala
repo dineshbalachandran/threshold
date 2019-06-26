@@ -16,9 +16,9 @@ class BreachIdentificationTest extends AbstractTestBase {
   @Test
   def testNoBreach(): Unit = {
 
-    System.setProperty("source.inEvent.file.dataFilePath", """.\src\test\resources\breachidentification\source_Nobreach.json""")
-    System.setProperty("sink.outEvent.file.dataFilePath", """.\src\test\resources\breachidentification\sink_Nobreach.json""")
-    System.setProperty("sink.thresholdControl.file.dataFilePath", """.\src\test\resources\breachidentification\controlsink_Nobreach.json""")
+    System.setProperty("source.inEvent.file.dataFilePath", """.\src\test\resources\breachidentification\noBreach\source_Nobreach.json""")
+    System.setProperty("sink.outEvent.file.dataFilePath", """.\src\test\resources\breachidentification\noBreach\sink_Nobreach.json""")
+    System.setProperty("sink.thresholdControl.file.dataFilePath", """.\src\test\resources\breachidentification\noBreach\controlsink_Nobreach.json""")
 
     cleanUp(List(System.getProperty("sink.thresholdControl.file.dataFilePath"),
       System.getProperty("sink.outEvent.file.dataFilePath")))
@@ -36,9 +36,9 @@ class BreachIdentificationTest extends AbstractTestBase {
   @Test
   def testAllLevelBreach(): Unit = {
 
-    System.setProperty("source.inEvent.file.dataFilePath", """.\src\test\resources\breachidentification\source_AllLevelbreach.json""")
-    System.setProperty("sink.outEvent.file.dataFilePath", """.\src\test\resources\breachidentification\sink_AllLevelbreach.json""")
-    System.setProperty("sink.thresholdControl.file.dataFilePath", """.\src\test\resources\breachidentification\controlsink_AllLevelbreach.json""")
+    System.setProperty("source.inEvent.file.dataFilePath", """.\src\test\resources\breachidentification\allLevelBreach\source_AllLevelbreach.json""")
+    System.setProperty("sink.outEvent.file.dataFilePath", """.\src\test\resources\breachidentification\allLevelBreach\sink_AllLevelbreach.json""")
+    System.setProperty("sink.thresholdControl.file.dataFilePath", """.\src\test\resources\breachidentification\allLevelBreach\controlsink_AllLevelbreach.json""")
 
     cleanUp(List(System.getProperty("sink.thresholdControl.file.dataFilePath"),
       System.getProperty("sink.outEvent.file.dataFilePath")))
@@ -56,9 +56,9 @@ class BreachIdentificationTest extends AbstractTestBase {
   @Test
   def testMultiNotAllLevelBreach(): Unit = {
 
-    System.setProperty("source.inEvent.file.dataFilePath", """.\src\test\resources\breachidentification\source_MultiLevelbreach.json""")
-    System.setProperty("sink.outEvent.file.dataFilePath", """.\src\test\resources\breachidentification\sink_MultiLevelbreach.json""")
-    System.setProperty("sink.thresholdControl.file.dataFilePath", """.\src\test\resources\breachidentification\controlsink_MultiLevelbreach.json""")
+    System.setProperty("source.inEvent.file.dataFilePath", """.\src\test\resources\breachidentification\multiLevelBreach\source_MultiLevelbreach.json""")
+    System.setProperty("sink.outEvent.file.dataFilePath", """.\src\test\resources\breachidentification\multiLevelBreach\sink_MultiLevelbreach.json""")
+    System.setProperty("sink.thresholdControl.file.dataFilePath", """.\src\test\resources\breachidentification\multiLevelBreach\controlsink_MultiLevelbreach.json""")
 
     cleanUp(List(System.getProperty("sink.thresholdControl.file.dataFilePath"),
       System.getProperty("sink.outEvent.file.dataFilePath")))
@@ -76,9 +76,9 @@ class BreachIdentificationTest extends AbstractTestBase {
   @Test
   def testFirstLevelBreach(): Unit = {
 
-    System.setProperty("source.inEvent.file.dataFilePath", """.\src\test\resources\breachidentification\source_FirstLevelbreach.json""")
-    System.setProperty("sink.outEvent.file.dataFilePath", """.\src\test\resources\breachidentification\sink_FirstLevelbreach.json""")
-    System.setProperty("sink.thresholdControl.file.dataFilePath", """.\src\test\resources\breachidentification\controlsink_FirstLevelbreach.json""")
+    System.setProperty("source.inEvent.file.dataFilePath", """.\src\test\resources\breachidentification\firstLevelBreach\source_FirstLevelbreach.json""")
+    System.setProperty("sink.outEvent.file.dataFilePath", """.\src\test\resources\breachidentification\firstLevelBreach\sink_FirstLevelbreach.json""")
+    System.setProperty("sink.thresholdControl.file.dataFilePath", """.\src\test\resources\breachidentification\firstLevelBreach\controlsink_FirstLevelbreach.json""")
 
     cleanUp(List(System.getProperty("sink.thresholdControl.file.dataFilePath"),
       System.getProperty("sink.outEvent.file.dataFilePath")))
@@ -96,9 +96,9 @@ class BreachIdentificationTest extends AbstractTestBase {
   @Test
   def testUnMappedEOI(): Unit = {
 
-    System.setProperty("source.inEvent.file.dataFilePath", """.\src\test\resources\breachidentification\source_UnmappedEOI.json""")
-    System.setProperty("sink.outEvent.file.dataFilePath", """.\src\test\resources\breachidentification\sink_UnmappedEOI.json""")
-    System.setProperty("sink.thresholdControl.file.dataFilePath", """.\src\test\resources\breachidentification\controlsink_UnmappedEOI.json""")
+    System.setProperty("source.inEvent.file.dataFilePath", ".\\src\\test\\resources\\breachidentification\\unMappedEOI\\source_UnmappedEOI.json")
+    System.setProperty("sink.outEvent.file.dataFilePath", ".\\src\\test\\resources\\breachidentification\\unMappedEOI\\sink_UnmappedEOI.json")
+    System.setProperty("sink.thresholdControl.file.dataFilePath", ".\\src\\test\\resources\\breachidentification\\unMappedEOI\\controlsink_UnmappedEOI.json")
 
     cleanUp(List(System.getProperty("sink.thresholdControl.file.dataFilePath"),
       System.getProperty("sink.outEvent.file.dataFilePath")))
@@ -119,8 +119,8 @@ class BreachIdentificationTest extends AbstractTestBase {
     createTables()
     setUpData()
 
-    System.setProperty("source.inEvent.file.dataFilePath", """.\src\test\resources\breachidentification\source_AllLevelbreach_dbsink.json""")
-    System.setProperty("sink.outEvent.file.dataFilePath", """.\src\test\resources\breachidentification\sink_AllLevelbreach_dbsink.json""")
+    System.setProperty("source.inEvent.file.dataFilePath", """.\src\test\resources\breachidentification\dbSink\source_AllLevelbreach_dbsink.json""")
+    System.setProperty("sink.outEvent.file.dataFilePath", """.\src\test\resources\breachidentification\dbSink\sink_AllLevelbreach_dbsink.json""")
     cleanUp(List(System.getProperty("sink.outEvent.file.dataFilePath")))
 
     BreachIdentification.main(Array("unit.db"))
