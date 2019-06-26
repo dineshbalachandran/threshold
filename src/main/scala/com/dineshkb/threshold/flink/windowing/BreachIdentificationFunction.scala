@@ -2,7 +2,8 @@ package com.dineshkb.threshold.flink.windowing
 
 import com.dineshkb.threshold
 import com.dineshkb.threshold.domain._
-import org.apache.flink.api.common.state.{ListState, ListStateDescriptor, ValueState, ValueStateDescriptor}
+import org.apache.flink.api.common.state._
+import org.apache.flink.api.common.time.Time
 import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation}
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
@@ -13,9 +14,6 @@ import scala.collection.JavaConverters._
 
 class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, OutEvent, ThresholdDefinition, TimeWindow] {
 
-  val elementsDesc = new ListStateDescriptor[InEvent]("elements", TypeInformation.of(new TypeHint[InEvent] {}))
-  val controlDesc = new ValueStateDescriptor[ThresholdControl]("control", TypeInformation.of(new TypeHint[ThresholdControl] {}))
-
   override def process(th: ThresholdDefinition, context: Context, elements: Iterable[EnrichedEvent], out: Collector[OutEvent]): Unit = {
 
     if (elements.isEmpty || th == threshold.UNDEFINED)
@@ -25,7 +23,7 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
     if (thcState.value == null)
       return
 
-    val eventState = context.globalState.getListState(elementsDesc)
+    val eventState = context.globalState.getListState(BreachIdentificationFunction.elementsDesc)
 
     val events = mergeElementsAndState(eventState, elements)
     th.levels.slice(thcState.value.breachLevel + 1, th.levels.size).foreach(x => {
@@ -55,21 +53,18 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
                                                process (no further triggers are possible)
     */
   private def getUpdatedThresholdControlState(thCtrlEvent: ThresholdControl, context: Context): ValueState[ThresholdControl] = {
-    val thcState = context.globalState.getState(controlDesc)
+    val thcState = context.globalState.getState(BreachIdentificationFunction.controlDesc)
     if (thcState.value == null && !thCtrlEvent.breached)
       thcState.update(thCtrlEvent)
 
     thcState
   }
 
-  private def breachesPossible(th: ThresholdDefinition, thc: ThresholdControl): Boolean = thc.breachLevel < th.levels.size - 1
-
-  //TODO: Optimize this code
   private def mergeElementsAndState(ls: ListState[InEvent], elements: Iterable[EnrichedEvent]): Vector[InEvent] = {
     val l = new scala.collection.mutable.ListBuffer[InEvent]
-    l ++= elements.map(_.inEvent)
-    ls.get.forEach(x => l += x)
-    l.toVector.sortBy(_.time)
+    ls.get.forEach(l.append(_)) //ls is sorted
+    l ++= elements.map(_.inEvent).toSeq.sortBy(_.time)
+    l.toVector
   }
 
   private def identifyBreach(th: ThresholdDefinition, events: Vector[InEvent], thc: ThresholdControl): OutEvent = {
@@ -122,5 +117,17 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
 
 
 object BreachIdentificationFunction {
+  val elementsDesc = new ListStateDescriptor[InEvent]("elements", TypeInformation.of(new TypeHint[InEvent] {}))
+  val controlDesc = new ValueStateDescriptor[ThresholdControl]("control", TypeInformation.of(new TypeHint[ThresholdControl] {}))
+
+  val ttlConfig = StateTtlConfig
+    .newBuilder(Time.seconds(System.getProperty("state.timeToLiveSecs").toLong))
+    .setUpdateType(StateTtlConfig.UpdateType.OnCreateAndWrite)
+    .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired)
+    .build
+
+  elementsDesc.enableTimeToLive(ttlConfig)
+  controlDesc.enableTimeToLive(ttlConfig)
+
   def apply(): BreachIdentificationFunction = new BreachIdentificationFunction
 }
