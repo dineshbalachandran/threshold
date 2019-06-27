@@ -40,17 +40,17 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
     eventState.update(events.filter(_.time >= cutOff).asJava)
   }
 
-  /*This method considers the below 5 input conditions and updates the threshold control state
+  /*This method considers the below 5 input conditions and how it updates the threshold control state
     Input						            Output
     Event		      State		      State
-    Not Breached	Null		      Not Breached	(This is the usual condition on start up)
+    Not Breached	Null		      Not Breached	(This is the usual start up condition or when an existing breach is closed)
     Not Breached	Not Breached	Not Breached	(no breach has occurred)
     Not Breached	Breached	    Breached	    (breach has occurred, however cache has not synchronized)
     Breached	    Breached	    Breached	    (breach has occurred, cache has synchronized)
-    Breached      Null          Null          (this input condition should ideally never occur, this means that
-                                               the state expired and an event came while a breach is in progress
-                                               in this case, retain the state as null as there is no need to
-                                               process (no further triggers are possible)
+    Breached      Null          Null          (this input condition indicates that an event came while a breach
+                                               is in progress and the state has expired.
+                                               In this case, retain the state as null as there is no need to
+                                               process (since no further breaches are possible).
     */
   private def getUpdatedThresholdControlState(thCtrlEvent: ThresholdControl, context: Context): ValueState[ThresholdControl] = {
     val thcState = context.globalState.getState(BreachIdentificationFunction.controlDesc)
@@ -126,6 +126,7 @@ object BreachIdentificationFunction {
     .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired)
     .build
 
+  //time to live configuration is used to reset the state and is required to recognise when an existing breach is closed
   elementsDesc.enableTimeToLive(ttlConfig)
   controlDesc.enableTimeToLive(ttlConfig)
 

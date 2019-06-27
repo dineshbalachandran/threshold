@@ -33,14 +33,9 @@ object BreachIdentification {
       .assignTimestampsAndWatermarks(new PunctuatedAssigner)
       .uid("watermark-id")
 
-    val enriched = if (System.getProperty("threshold.enricher.ordered") == "false")
-                      AsyncDataStream.unorderedWait(in, AsyncThresholdEnricherFunction(),
-                        System.getProperty("threshold.enricher.timeoutMillis").toLong, TimeUnit.MILLISECONDS,
-                        System.getProperty("threshold.enricher.capacity").toInt)
-                  else
-                      AsyncDataStream.orderedWait(in, AsyncThresholdEnricherFunction(),
-                        System.getProperty("threshold.enricher.timeoutMillis").toLong, TimeUnit.MILLISECONDS,
-                        System.getProperty("threshold.enricher.capacity").toInt)
+    val enriched = AsyncDataStream.unorderedWait(in, AsyncThresholdEnricherFunction(),
+                    System.getProperty("threshold.enricher.timeoutMillis").toLong, TimeUnit.MILLISECONDS,
+                    System.getProperty("threshold.enricher.capacity").toInt)
 
     val out: DataStream[OutEvent] = enriched
       .uid("enriched-source-id")
