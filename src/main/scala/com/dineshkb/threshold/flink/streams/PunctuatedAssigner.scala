@@ -12,7 +12,6 @@ class PunctuatedAssigner extends AssignerWithPunctuatedWatermarks[InEvent]{
   override def checkAndGetNextWatermark(lastElement: InEvent, extractedTimestamp: Long): Watermark = {
     nextWaterMarkTime = if (nextWaterMarkTime < 0) extractedTimestamp - watermarkDelay else nextWaterMarkTime
     if (maxTime >= nextWaterMarkTime + watermarkDelay) {
-      println("a:" + nextWaterMarkTime + " m:" + maxTime + " t:" + Thread.currentThread.getId)
       val w = new Watermark(nextWaterMarkTime)
       nextWaterMarkTime += watermarkDelay
       w
