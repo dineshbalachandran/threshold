@@ -107,7 +107,7 @@ class DBLoaderTest extends FlatSpec with Matchers {
       sql"insert into thresholdmapping (id, eoiId, createdAt) values (${th._1}, ${th._2}, current_timestamp)".update.apply()(NamedAutoSession('loadertest))
     }
 
-    Seq(("TH001", 1, 5, 5), ("TH001", 2, 10, 10), ("TH001", 3, 15, 20), ("TH002", 1, 1, 1), ("TH002", 2, 5, 5)) foreach { th =>
+    Seq(("TH001", 0, 5, 5), ("TH001", 1, 10, 10), ("TH001", 2, 15, 20), ("TH002", 0, 1, 1), ("TH002", 1, 5, 5)) foreach { th =>
       sql"insert into thresholdlevel (id, level, count, duration, createdAt) values (${th._1}, ${th._2}, ${th._3}, ${th._4}, current_timestamp)".update.apply()(NamedAutoSession('loadertest))
     }
 

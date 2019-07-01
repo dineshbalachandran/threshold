@@ -36,7 +36,7 @@ class DBLoader extends Loader {
 
     val levels = sql"select * from thresholdlevel order by id, level desc".foldLeft(scala.collection.mutable.Map[String, List[ThresholdLevel]]())((m, rs) => {
       val id = rs.string("id")
-      val levels = ThresholdLevel(rs.int("count"), rs.int("duration")) :: (if (m contains id) m(id) else List())
+      val levels = ThresholdLevel(rs.int("level"), rs.int("count"), rs.int("duration")) :: (if (m contains id) m(id) else List())
       m += (id -> levels)
     })(NamedAutoSession(connectName))
 

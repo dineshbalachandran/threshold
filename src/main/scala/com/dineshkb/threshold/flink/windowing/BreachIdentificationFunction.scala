@@ -26,8 +26,8 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
     val eventState = context.globalState.getListState(BreachIdentificationFunction.elementsDesc)
 
     val events = mergeElementsAndState(eventState, elements)
-    th.levels.slice(thcState.value.breachLevel + 1, th.levels.size).foreach(x => {
-      val outEvent = identifyBreach(th, events, thcState.value)
+    th.levels.slice(thcState.value.breachLevel + 1, th.levels.size).foreach(thLevel => {
+      val outEvent = identifyBreach(th, thLevel, events, thcState.value)
       val newThc = generateThresholdControl(th, thcState.value, outEvent)
       if (outEvent.breached) {
         out.collect(outEvent)
@@ -67,9 +67,15 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
     l.toVector
   }
 
-  private def identifyBreach(th: ThresholdDefinition, events: Vector[InEvent], thc: ThresholdControl): OutEvent = {
-    if (thc.breached) subsequentBreach(th, events, thc)
-    else firstLevelBreach(th, events)
+  private def identifyBreach(th: ThresholdDefinition, thLevel: ThresholdLevel, events: Vector[InEvent], thc: ThresholdControl): OutEvent = {
+    if (thLevel.isFirst)
+      firstBreach(th.id, thLevel, events)
+    else {
+      if (thc.breached)
+        subsequentBreach(th.id, thLevel, events, thc)
+      else
+        threshold.NO_BREACH_EVENT
+    }
   }
 
   private def generateThresholdControl(th: ThresholdDefinition, thc: ThresholdControl, o: OutEvent): ThresholdControl = {
@@ -80,38 +86,31 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
       thc
   }
 
-  private def firstLevelBreach(th: ThresholdDefinition, events: Vector[InEvent]): OutEvent = {
-    if (events.size < th.levels.head.count)
-      firstlevel(0, events.size, th.id, events, th.levels.head)
+  private def firstBreach(thId: String, thLevel: ThresholdLevel, events: Vector[InEvent]): OutEvent = {
+    if (events.size < thLevel.count)
+      findFirstBreach(0, events.size, thId, events, thLevel)
     else
-      firstlevel(0, th.levels.head.count - 1, th.id, events, th.levels.head)
+      findFirstBreach(0, thLevel.count - 1, thId, events, thLevel)
   }
 
   /** a recursive sliding window implementation */
-  private def firstlevel(start: Int, end: Int, id: String, events: Vector[InEvent], thLevel: ThresholdLevel): OutEvent = {
+  private def findFirstBreach(start: Int, end: Int, thId: String, events: Vector[InEvent], thLevel: ThresholdLevel): OutEvent = {
     if (end == events.size)
-      OutEvent(breached = false, id, level = 0, events.size, events(start).time, events(end - 1).time, events(end - 1).time - events(start).time)
+      OutEvent(breached = false, thId, level = thLevel.level, events.size, events(start).time, events(end - 1).time, events(end - 1).time - events(start).time)
     else if (end - start + 1 == thLevel.count && events(end).time <= events(start).time + thLevel.duration)
-      OutEvent(breached = true, id, level = 0, end - start + 1, events(start).time, events(end).time, events(end).time - events(start).time)
+      OutEvent(breached = true, thId, level = thLevel.level, end - start + 1, events(start).time, events(end).time, events(end).time - events(start).time)
     else if (events(end).time > events(start).time + thLevel.duration)
-      firstlevel(start + 1, end + 1, id, events, thLevel)
+      findFirstBreach(start + 1, end + 1, thId, events, thLevel)
     else
-      firstlevel(start, end + 1, id, events, thLevel)
+      findFirstBreach(start, end + 1, thId, events, thLevel)
   }
 
-  private def subsequentBreach(th: ThresholdDefinition, events: Vector[InEvent], thc: ThresholdControl): OutEvent = {
+  private def subsequentBreach(thId: String, thLevel: ThresholdLevel, events: Vector[InEvent], thc: ThresholdControl): OutEvent = {
     val eventsCount = events.size
-
-    val level = th.levels.slice(thc.breachLevel + 1, th.levels.size).indexWhere(x => {
-      if (x.count <= eventsCount && events(x.count - 1).time <= events.head.time + x.duration) true else false
-    })
-
-    level match {
-      case -1 => OutEvent(breached = false, th.id, thc.breachLevel + 1, eventsCount, events.head.time, events.last.time, events.last.time - events.head.time)
-      case _ =>
-        val count = th.levels(thc.breachLevel + level + 1).count
-        OutEvent(breached = true, th.id, thc.breachLevel + level + 1, count, events.head.time, events(count-1).time, events(count-1).time - events.head.time)
-    }
+    if (thLevel.count <= eventsCount && events(thLevel.count - 1).time <= events.head.time + thLevel.duration)
+      OutEvent(breached = true, thId, thLevel.level, thLevel.count, events.head.time, events(thLevel.count - 1).time, events(thLevel.count - 1).time - events.head.time)
+    else
+      OutEvent(breached = false, thId, thLevel.level, eventsCount, events.head.time, events.last.time, events.last.time - events.head.time)
   }
 }
 
@@ -120,7 +119,7 @@ object BreachIdentificationFunction {
   val elementsDesc = new ListStateDescriptor[InEvent]("elements", TypeInformation.of(new TypeHint[InEvent] {}))
   val controlDesc = new ValueStateDescriptor[ThresholdControl]("control", TypeInformation.of(new TypeHint[ThresholdControl] {}))
 
-  val ttlConfig = StateTtlConfig
+  val ttlConfig: StateTtlConfig = StateTtlConfig
     .newBuilder(Time.seconds(System.getProperty("state.timeToLiveSecs").toLong))
     .setUpdateType(StateTtlConfig.UpdateType.OnCreateAndWrite)
     .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired)
