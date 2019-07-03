@@ -1,0 +1,3 @@
+{"breached":true,"id":"TH001","level":0,"count":5,"start":1559046768000,"end":1559046772000,"duration":4000}
+{"breached":true,"id":"TH001","level":1,"count":10,"start":1559046768000,"end":1559046776100,"duration":8100}
+{"breached":true,"id":"TH001","level":2,"count":15,"start":1559046768000,"end":1559046782000,"duration":14000}

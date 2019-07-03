@@ -134,6 +134,25 @@ class BreachIdentificationTest extends AbstractTestBase {
     assertEquals(List(0, 1, 2), control)
   }
 
+  //test input events that come out of order, breaches all 3 levels
+  @Test
+  def testUnOrdered(): Unit = {
+    System.setProperty("source.inEvent.file.dataFilePath", ".\\src\\test\\resources\\breachidentification\\unordered\\source_unordered_AllLevelbreach.json")
+    System.setProperty("sink.outEvent.file.dataFilePath", ".\\src\\test\\resources\\breachidentification\\unordered\\sink_unordered_AllLevelbreach.json")
+    System.setProperty("sink.thresholdControl.file.dataFilePath", ".\\src\\test\\resources\\breachidentification\\unordered\\controlsink_unordered_AllLevelbreach.json")
+
+    cleanUp(List(System.getProperty("sink.thresholdControl.file.dataFilePath"),
+      System.getProperty("sink.outEvent.file.dataFilePath")))
+
+    BreachIdentification.main(Array("unit"))
+
+    val breach = readOutEvent(System.getProperty("sink.outEvent.file.dataFilePath")).map(_.level).sorted
+    val control = readThresholdControl(System.getProperty("sink.thresholdControl.file.dataFilePath")).map(_.breachLevel).sorted
+
+    assertEquals(List(0, 1, 2), breach)
+    assertEquals(List(0, 1, 2), control)
+  }
+
   private def cleanUp(f: Seq[String]): Unit = {
     f.foreach(new File(_).delete())
   }
