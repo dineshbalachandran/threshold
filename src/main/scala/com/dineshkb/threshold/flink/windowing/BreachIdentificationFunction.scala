@@ -36,7 +36,7 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
       }
     })
 
-    val cutOff = if (thcState.value.breached) thcState.value.breachStart else context.currentWatermark - th.levels.head.duration
+    val cutOff = if (thcState.value.breached) thcState.value.breachStart else context.window.getEnd - th.levels.head.duration
     eventState.update(events.filter(_.time >= cutOff).asJava)
   }
 
