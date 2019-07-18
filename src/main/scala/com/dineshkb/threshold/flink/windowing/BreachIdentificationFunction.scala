@@ -28,8 +28,8 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
     val events = mergeElementsAndState(eventState, elements)
     th.levels.slice(thcState.value.breachLevel + 1, th.levels.size).foreach(thLevel => {
       val outEvent = generateBreachEvent(th, thLevel, events, thcState.value)
-      val newThc = generateThresholdControl(th, thcState.value, outEvent)
       if (outEvent.breached) {
+        val newThc = generateNewThresholdControl(th, thcState.value, outEvent)
         out.collect(outEvent)
         context.output(OutputTag[ThresholdControl]("control"), newThc)
         thcState.update(newThc)
@@ -78,12 +78,9 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
     }
   }
 
-  private def generateThresholdControl(th: ThresholdDefinition, thc: ThresholdControl, o: OutEvent): ThresholdControl = {
-    if (o.breached) {
-      val breachStart = if (thc.breached) thc.breachStart else o.start
-      ThresholdControl(th.id, breachStart, o.level)
-    } else
-      thc
+  private def generateNewThresholdControl(th: ThresholdDefinition, thc: ThresholdControl, o: OutEvent): ThresholdControl = {
+    val breachStart = if (thc.breached) thc.breachStart else o.start
+    ThresholdControl(th.id, breachStart, o.level)
   }
 
   private def firstBreach(thId: String, thLevel: ThresholdLevel, events: Vector[InEvent]): OutEvent = {
