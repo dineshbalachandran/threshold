@@ -2,7 +2,7 @@ package com.dineshkb.threshold.flink.windowing
 
 import com.dineshkb.threshold
 import com.dineshkb.threshold.domain._
-import org.apache.flink.api.common.state._
+import org.apache.flink.api.common.state.{ValueState, _}
 import org.apache.flink.api.common.time.Time
 import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation}
 import org.apache.flink.streaming.api.scala._
@@ -16,22 +16,24 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
 
   override def process(th: ThresholdDefinition, context: Context, elements: Iterable[EnrichedEvent], out: Collector[OutEvent]): Unit = {
 
-    if (elements.isEmpty || th == threshold.UNDEFINED)
-      return
-
-    val thcState = getUpdatedThresholdControlState(elements.head.thCtrl, context)
-    if (thcState.value == null)
-      return
-
+    val thcState = context.globalState.getState(BreachIdentificationFunction.controlDesc)
     val eventState = context.globalState.getListState(BreachIdentificationFunction.elementsDesc)
 
-    val events = mergeElementsAndState(eventState, elements)
-    th.levels.slice(thcState.value.breachLevel + 1, th.levels.size).foreach(thLevel => {
+    setInitialThresholdControlState(elements, thcState)
+
+    if (!breachPreConditionsMet(th, thcState.value, elements))
+      return
+
+    val events = mergeWindowAndStateElements(eventState.get, elements)
+
+    th.levels.slice(thcState.value.breachLevel + 1, th.levels.size) foreach (thLevel => {
       val outEvent = generateBreachEvent(th, thLevel, events, thcState.value)
       if (outEvent.breached) {
         val newThc = generateNewThresholdControl(th, thcState.value, outEvent)
+
         out.collect(outEvent)
         context.output(OutputTag[ThresholdControl]("control"), newThc)
+
         thcState.update(newThc)
       }
     })
@@ -40,29 +42,38 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
     eventState.update(events.filter(_.time >= cutOff).asJava)
   }
 
-  /*This method considers the below 5 input conditions and how it updates the threshold control state
-    Input						            Output
-    Event		      State		      State
-    Not Breached	Null		      Not Breached	(This is the usual start up condition or when an existing breach is closed)
-    Not Breached	Not Breached	Not Breached	(no breach has occurred)
-    Not Breached	Breached	    Breached	    (breach has occurred, however cache has not synchronized)
-    Breached	    Breached	    Breached	    (breach has occurred, cache has synchronized)
-    Breached      Null          Null          (this input condition indicates that an event came while a breach
-                                               is in progress and the state has expired.
-                                               In this case, retain the state as null as there is no need to
-                                               process (since no further breaches are possible).
-    */
-  private def getUpdatedThresholdControlState(thCtrlEvent: ThresholdControl, context: Context): ValueState[ThresholdControl] = {
-    val thcState = context.globalState.getState(BreachIdentificationFunction.controlDesc)
-    if (thcState.value == null && !thCtrlEvent.breached)
-      thcState.update(thCtrlEvent)
 
-    thcState
+  /*This method considers the below 5 input conditions and how it updates the threshold control state
+      Input						            Output
+      Event		      State		      State
+      Not Breached	Null		      Not Breached	(This is the usual start up condition or when an existing breach is closed)
+      Not Breached	Not Breached	Not Breached	(no breach has occurred)
+      Not Breached	Breached	    Breached	    (breach has occurred, however cache has not synchronized)
+      Breached	    Breached	    Breached	    (breach has occurred, cache has synchronized)
+      Breached      Null          Null          (this input condition indicates that an event came while a breach
+                                                 is in progress and the state has expired.
+                                                 In this case, retain the state as null as there is no need to
+                                                 process (since no further breaches are possible).
+      */
+  private def setInitialThresholdControlState(elements: Iterable[EnrichedEvent], thcState: ValueState[ThresholdControl]) : Unit = {
+    if (thcState.value == null && elements.nonEmpty && !elements.head.thCtrl.breached)
+      thcState.update(elements.head.thCtrl)
   }
 
-  private def mergeElementsAndState(ls: ListState[InEvent], elements: Iterable[EnrichedEvent]): Vector[InEvent] = {
+  private def breachPreConditionsMet(th: ThresholdDefinition, thc: ThresholdControl, elements: Iterable[EnrichedEvent]): Boolean = {
+    if (th == threshold.UNDEFINED)
+      false
+    else if (elements.isEmpty)
+      false
+    else if (thc == null) //breach in progress,no further breaches possible
+      false
+    else
+      true
+  }
+
+  private def mergeWindowAndStateElements(ls: java.lang.Iterable[InEvent], elements: Iterable[EnrichedEvent]): Vector[InEvent] = {
     val l = new scala.collection.mutable.ListBuffer[InEvent]
-    ls.get.forEach(l.append(_)) //ls is sorted
+    ls.forEach(l.append(_)) //ls is already sorted
     l ++= elements.map(_.inEvent).toSeq.sortBy(_.time)
     l.toVector
   }
@@ -91,15 +102,15 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
   }
 
   /** a recursive sliding window implementation */
-  private def findFirstBreach(start: Int, end: Int, thId: String, events: Vector[InEvent], thLevel: ThresholdLevel): OutEvent = {
+  private def findFirstBreach(begin: Int, end: Int, thId: String, events: Vector[InEvent], thLevel: ThresholdLevel): OutEvent = {
     if (end == events.size)
-      OutEvent(breached = false, thId, level = thLevel.level, events.size, events(start).time, events(end - 1).time, events(end - 1).time - events(start).time)
-    else if (end - start + 1 == thLevel.count && events(end).time <= events(start).time + thLevel.duration)
-      OutEvent(breached = true, thId, level = thLevel.level, end - start + 1, events(start).time, events(end).time, events(end).time - events(start).time)
-    else if (events(end).time > events(start).time + thLevel.duration)
-      findFirstBreach(start + 1, end + 1, thId, events, thLevel)
+      OutEvent(breached = false, thId, level = thLevel.level, events.size, events(begin).time, events(end - 1).time, events(end - 1).time - events(begin).time)
+    else if (end - begin + 1 == thLevel.count && events(end).time <= events(begin).time + thLevel.duration)
+      OutEvent(breached = true, thId, level = thLevel.level, end - begin + 1, events(begin).time, events(end).time, events(end).time - events(begin).time)
+    else if (events(end).time > events(begin).time + thLevel.duration)
+      findFirstBreach(begin + 1, end + 1, thId, events, thLevel)
     else
-      findFirstBreach(start, end + 1, thId, events, thLevel)
+      findFirstBreach(begin, end + 1, thId, events, thLevel)
   }
 
   private def subsequentBreach(thId: String, thLevel: ThresholdLevel, events: Vector[InEvent], thc: ThresholdControl): OutEvent = {
