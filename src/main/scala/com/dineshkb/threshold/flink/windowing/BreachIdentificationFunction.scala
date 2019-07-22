@@ -53,7 +53,7 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
       Breached      Null          Null          (this input condition indicates that an event came while a breach
                                                  is in progress and the state has expired.
                                                  In this case, retain the state as null as there is no need to
-                                                 process (since no further breaches are possible).
+                                                 process (since no further breach levels are possible).
       */
   private def setInitialThresholdControlState(elements: Iterable[EnrichedEvent], thcState: ValueState[ThresholdControl]) : Unit = {
     if (thcState.value == null && elements.nonEmpty && !elements.head.thCtrl.breached)
@@ -61,11 +61,10 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
   }
 
   private def breachPreConditionsMet(th: ThresholdDefinition, thc: ThresholdControl, elements: Iterable[EnrichedEvent]): Boolean = {
-    if (th == threshold.UNDEFINED)
-      false
-    else if (elements.isEmpty)
-      false
-    else if (thc == null) //breach in progress,no further breaches possible
+    if (th == threshold.UNDEFINED ||
+        elements.isEmpty          ||
+        thc == null                  //a breach is in-progress and no further breach levels remain are possible
+       )
       false
     else
       true
