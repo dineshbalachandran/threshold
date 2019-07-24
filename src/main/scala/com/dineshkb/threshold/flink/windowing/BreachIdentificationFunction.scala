@@ -26,43 +26,53 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
     val events = getEventsOrderedByTime(elements, eventState.get)
 
     val breachLevelsRemaining = th.levels.slice(thcState.value.breachLevel + 1, th.levels.size)
-    breachLevelsRemaining foreach (thLevel => {
-      val outEvent = generateOutEvent(th, thLevel, events, thcState.value)
-      if (outEvent.breached) {
-        val newThc = generateNewThresholdControl(th, thcState.value, outEvent)
+    breachLevelsRemaining foreach (thLevel => outputPotentialBreachEvent(thLevel, th, thcState, events, context, out))
 
-        out.collect(outEvent)
-        context.output(OutputTag[ThresholdControl]("control"), newThc)
+    updateEventsState(th, thcState, eventState, events, context)
+  }
 
-        thcState.update(newThc)
-      }
-    })
-
+  private def updateEventsState(th: ThresholdDefinition, thcState: ValueState[ThresholdControl], eventState: ListState[InEvent], events: Vector[InEvent], context: Context): Unit = {
     val cutOff = if (thcState.value.breached) thcState.value.breachStart else context.window.getEnd - th.levels.head.duration
     eventState.update(events.filter(_.time >= cutOff).asJava)
   }
 
+  private def updateThresholdControlState(thcState: ValueState[ThresholdControl], newThc: ThresholdControl): Unit = {
+    thcState.update(newThc)
+  }
+
+  private def outputPotentialBreachEvent(thLevel: ThresholdLevel, th: ThresholdDefinition, thcState: ValueState[ThresholdControl], events: Vector[InEvent], context: Context, out: Collector[OutEvent]): Unit = {
+    val outEvent = generateOutEvent(th, thLevel, events, thcState.value)
+    if (outEvent.breached) {
+      val newThc = generateNewThresholdControl(th, thcState.value, outEvent)
+
+      out.collect(outEvent)
+      context.output(OutputTag[ThresholdControl]("control"), newThc)
+
+      updateThresholdControlState(thcState, newThc)
+    }
+  }
+
   /*This method considers the below 5 input conditions and how it updates the threshold control state
-      Input						            Output
-      Event		      State		      State
-      Not Breached	Null		      Not Breached	(This is the usual start up condition or when an existing breach is closed)
-      Not Breached	Not Breached	Not Breached	(no breach has occurred)
-      Not Breached	Breached	    Breached	    (breach has occurred, however cache has not synchronized)
-      Breached	    Breached	    Breached	    (breach has occurred, cache has synchronized)
-      Breached      Null          Null          (this input condition indicates that an event came while a breach
-                                                 is in progress and the state has expired.
-                                                 In this case, retain the state as null as there is no need to
-                                                 process (since no further breach levels are possible).
-      */
+          Input						            Output
+          Event		      State		      State
+          Not Breached	Null		      Not Breached	(This is the usual start up condition or when an existing breach is closed)
+          Not Breached	Not Breached	Not Breached	(no breach has occurred)
+          Not Breached	Breached	    Breached	    (breach has occurred, however cache has not synchronized)
+          Breached	    Breached	    Breached	    (breach has occurred, cache has synchronized)
+          Breached      Null          Null          (this input condition indicates that an event came while a breach
+                                                     is in progress and the state has expired.
+                                                     In this case, retain the state as null as there is no need to
+                                                     process (since no further breach levels are possible).
+          */
   private def setInitialThresholdControlState(elements: Iterable[EnrichedEvent], thcState: ValueState[ThresholdControl]) : Unit = {
     if (thcState.value == null && elements.nonEmpty && !elements.head.thCtrl.breached)
-      thcState.update(elements.head.thCtrl)
+      updateThresholdControlState(thcState, elements.head.thCtrl)
   }
 
   private def breachPreConditionsMet(th: ThresholdDefinition, thc: ThresholdControl, elements: Iterable[EnrichedEvent]): Boolean = {
     if (th == threshold.UNDEFINED ||
         elements.isEmpty          ||
-        thc == null                  //a breach is in-progress and no further breach levels remain are possible
+        thc == null                  //a breach is in-progress and no further breaches are possible
        )
       false
     else
