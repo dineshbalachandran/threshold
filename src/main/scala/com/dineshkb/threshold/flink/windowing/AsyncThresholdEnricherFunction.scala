@@ -24,10 +24,12 @@ class AsyncThresholdEnricherFunction extends RichAsyncFunction[InEvent, Enriched
     load()
   }
 
-  private def load(): Unit = {
-    eoi2Th = mapEOI2ThresholdDefinition(loader.getDefinition())
-    controls = loader.getControl()
-    lastRefreshed = System.currentTimeMillis()
+  private def load(): Unit = loader.synchronized {
+    if (System.currentTimeMillis() > lastRefreshed + refreshInterval) {
+      eoi2Th = mapEOI2ThresholdDefinition(loader.getDefinition())
+      controls = loader.getControl()
+      lastRefreshed = System.currentTimeMillis()
+    }
   }
 
   private def mapEOI2ThresholdDefinition(definitions: Map[String, ThresholdDefinition]): Map[String, ThresholdDefinition] = {
@@ -48,7 +50,7 @@ class AsyncThresholdEnricherFunction extends RichAsyncFunction[InEvent, Enriched
     }(ExecutionContext.global)
   }
 
-  override def close(): Unit = loader.close()
+  override def close(): Unit = loader.synchronized { loader.close() }
 }
 
 object AsyncThresholdEnricherFunction {
