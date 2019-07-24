@@ -4,10 +4,10 @@ import java.util.Properties
 import java.util.concurrent.TimeUnit
 
 import com.dineshkb.threshold.domain.{InEvent, OutEvent, ThresholdControl}
-import com.dineshkb.threshold.flink.streams.PunctuatedAssigner
 import com.dineshkb.threshold.flink.streams.sink.{OutEventSink, ThresholdControlSink}
 import com.dineshkb.threshold.flink.streams.source.InEventSource
-import com.dineshkb.threshold.flink.windowing.{AsyncThresholdEnricherFunction, BreachIdentificationFunction}
+import com.dineshkb.threshold.flink.streams.{AsyncThresholdEnricherFunction, PunctuatedAssigner}
+import com.dineshkb.threshold.flink.windowing.BreachIdentificationFunction
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
 import org.apache.flink.streaming.api.windowing.time.Time

@@ -1,4 +1,4 @@
-package com.dineshkb.threshold.flink.windowing
+package com.dineshkb.threshold.flink.streams
 
 import com.dineshkb.threshold
 import com.dineshkb.threshold.domain.{EnrichedEvent, InEvent, ThresholdControl, ThresholdDefinition}

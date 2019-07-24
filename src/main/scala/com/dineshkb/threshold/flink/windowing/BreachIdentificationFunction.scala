@@ -57,8 +57,8 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
           Event		      State		      State
           Not Breached	Null		      Not Breached	(This is the usual start up condition or when an existing breach is closed)
           Not Breached	Not Breached	Not Breached	(no breach has occurred)
-          Not Breached	Breached	    Breached	    (breach has occurred, however cache has not synchronized)
-          Breached	    Breached	    Breached	    (breach has occurred, cache has synchronized)
+          Not Breached	Breached	    Breached	    (breach has occurred, however cache has not refreshed)
+          Breached	    Breached	    Breached	    (breach has occurred, cache has refreshed)
           Breached      Null          Null          (this input condition indicates that an event came while a breach
                                                      is in progress and the state has expired.
                                                      In this case, retain the state as null as there is no need to
