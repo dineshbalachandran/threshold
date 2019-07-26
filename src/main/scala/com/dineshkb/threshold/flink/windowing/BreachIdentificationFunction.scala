@@ -25,11 +25,16 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
 
     val events = getEventsOrderedByTime(elements, eventState.get)
 
-    val breachLevelsRemaining = th.levels.slice(thcState.value.breachLevel + 1, th.levels.size)
-    breachLevelsRemaining foreach (thLevel => outputPotentialBreachEvent(thLevel, th, thcState, events, context, out))
+    getLevelsRemainingToBeBreached(th, thcState) foreach {
+      thLevel => outputPotentialBreachEvent(thLevel, th, thcState, events, context, out)
+    }
 
     updateEventsState(th, thcState, eventState, events, context)
   }
+
+  private def getLevelsRemainingToBeBreached(th: ThresholdDefinition, thcState: ValueState[ThresholdControl]): List[ThresholdLevel] =
+    th.levels.slice(thcState.value.breachLevel + 1, th.levels.size)
+
 
   private def updateEventsState(th: ThresholdDefinition, thcState: ValueState[ThresholdControl], eventState: ListState[InEvent], events: Vector[InEvent], context: Context): Unit = {
     val cutOff = if (thcState.value.breached) thcState.value.breachStart else context.window.getEnd - th.levels.head.duration
@@ -103,6 +108,7 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
   }
 
   /** a tail recursive sliding window implementation */
+  @scala.annotation.tailrec
   private def firstBreach(begin: Int, end: Int, thId: String, events: Vector[InEvent], thLevel: ThresholdLevel): OutEvent = {
     if (end >= events.size)
       OutEvent(breached = false, thId, level = thLevel.level, events.size, events(begin).time, events.last.time, events.last.time - events(begin).time)
