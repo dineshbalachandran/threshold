@@ -25,7 +25,7 @@ class AsyncThresholdEnricherFunction extends RichAsyncFunction[InEvent, Enriched
   }
 
   private def load(): Unit = loader.synchronized {
-    if (cacheStale) {
+    if (cacheStale()) {
       eoi2Th = mapEOI2ThresholdDefinition(loader.getDefinition())
       controls = loader.getControl()
       lastRefreshed = System.currentTimeMillis()
@@ -41,7 +41,7 @@ class AsyncThresholdEnricherFunction extends RichAsyncFunction[InEvent, Enriched
 
   override def asyncInvoke(input: InEvent, resultFuture: ResultFuture[EnrichedEvent]): Unit = {
     Future {
-      if (cacheStale) load()
+      if (cacheStale()) load()
       val thDef = if (eoi2Th contains input.eoiId) eoi2Th(input.eoiId) else threshold.UNDEFINED
       val thCtrl = if (controls contains thDef.id) controls(thDef.id) else threshold.CNTRL_NOT_PRESENT
 
@@ -50,7 +50,7 @@ class AsyncThresholdEnricherFunction extends RichAsyncFunction[InEvent, Enriched
     }(ExecutionContext.global)
   }
 
-  private def cacheStale: Boolean = System.currentTimeMillis() > lastRefreshed + refreshInterval
+  private def cacheStale(): Boolean = System.currentTimeMillis() > lastRefreshed + refreshInterval
 
   override def close(): Unit = loader.synchronized { loader.close() }
 }
