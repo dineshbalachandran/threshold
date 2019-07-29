@@ -1,4 +1,4 @@
-package com.dineshkb.threshold.flink.serialization
+package com.dineshkb.threshold.flink.streams.serialization
 
 import com.dineshkb.threshold.domain.OutEvent
 import net.liftweb.json.DefaultFormats

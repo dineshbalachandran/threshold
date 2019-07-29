@@ -3,7 +3,7 @@ package com.dineshkb.threshold.flink.streams.source
 import java.util.Properties
 
 import com.dineshkb.threshold.domain.InEvent
-import com.dineshkb.threshold.flink.serialization.InEventDeSerializationSchema
+import com.dineshkb.threshold.flink.streams.serialization.InEventDeSerializationSchema
 import org.apache.flink.api.common.serialization.DeserializationSchema
 import org.apache.flink.streaming.connectors.kinesis.FlinkKinesisConsumer
 

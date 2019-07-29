@@ -57,7 +57,8 @@ class BreachIdentificationFunction extends ProcessWindowFunction[EnrichedEvent, 
     }
   }
 
-  /*This method considers the below 5 input conditions and how it updates the threshold control state
+  /*This method considers the below 5 input conditions and how it updates the threshold control state.
+    The threshold control lifecycle is: Null -> Not Breached -> Breached -> Null
           Input						            Output
           Event		      State		      State
           Not Breached	Null		      Not Breached	(This is the usual start up condition or when an existing breach is closed)
