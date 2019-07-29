@@ -33,9 +33,10 @@ class AsyncThresholdEnricherFunction extends RichAsyncFunction[InEvent, Enriched
   }
 
   private def mapEOI2ThresholdDefinition(definitions: Map[String, ThresholdDefinition]): Map[String, ThresholdDefinition] = {
-    definitions.foldLeft(scala.collection.mutable.Map[String, ThresholdDefinition]())((b, e) => {
-      e._2.mapping.foreach(x => b += (x -> e._2))
-      b
+    definitions.foldLeft(scala.collection.mutable.Map[String, ThresholdDefinition]())((eoiToTh, e) => {
+      val (_, th) = e
+      th.mapping.foreach(eoi => eoiToTh += (eoi -> th))
+      eoiToTh
     }).toMap
   }
 
