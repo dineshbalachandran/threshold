@@ -40,6 +40,8 @@ class AsyncThresholdEnricherFunction extends RichAsyncFunction[InEvent, Enriched
     }).toMap
   }
 
+  private def cacheStale(): Boolean = System.currentTimeMillis() > lastRefreshed + refreshInterval
+
   override def asyncInvoke(input: InEvent, resultFuture: ResultFuture[EnrichedEvent]): Unit = {
     Future {
       if (cacheStale()) load()
@@ -50,8 +52,6 @@ class AsyncThresholdEnricherFunction extends RichAsyncFunction[InEvent, Enriched
       resultFuture.complete(Seq(enrichedEvent))
     }(ExecutionContext.global)
   }
-
-  private def cacheStale(): Boolean = System.currentTimeMillis() > lastRefreshed + refreshInterval
 
   override def close(): Unit = loader.synchronized { loader.close() }
 }

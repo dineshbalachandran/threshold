@@ -17,7 +17,7 @@ object BreachIdentification {
 
   def main(args: Array[String]): Unit = {
     setProperties(args(0))
-    val env = getExecutionEnvironment()
+    val env = getExecutionEnvironment
 
     val src = InEventSource(System.getProperty("source.inEvent"))
     val eventSnk = OutEventSink(System.getProperty("sink.outEvent"))
@@ -53,7 +53,7 @@ object BreachIdentification {
     env.execute("Threshold Breach Identification")
   }
 
-  private def getExecutionEnvironment(): StreamExecutionEnvironment = {
+  private def getExecutionEnvironment: StreamExecutionEnvironment = {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
 
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
