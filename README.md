@@ -1,13 +1,10 @@
-A Flink application project using Scala and SBT.
+A Flink stream processing application using Scala and SBT. The application generates 'threshold' breach events by matching incoming events against a defined threshold (number of events within a period of time).
+- The externally configured 'threshold definition' is loaded by the application. It supports multiple levels of threshold.
+- Flink state management and tumbling time windows are used to 'detect' a threshold breach
+- The application is flexible in that it supports input and output event stream as well as the threshold definitions from a variety of source types i.e file based, kinesis, database. Other source types can be added. 
+For e.g. the unit tests use file and in memory database source types, while in production it will be sql database and kinesis or kafka streams.  
 
-To run and test your application locally, you can just execute `sbt run` then select the main class that contains the Flink job . 
-
-You can also package the application into a fat jar with `sbt assembly`, then submit it as usual, with something like: 
-
-```
-flink run -c org.example.WordCount /path/to/your/project/my-app/target/scala-2.11/testme-assembly-0.1-SNAPSHOT.jar
-```
+Unit tests use JUnit and ScalaTest.
 
 
-You can also run your application from within IntelliJ:  select the classpath of the 'mainRunner' module in the run/debug configurations.
-Simply open 'Run -> Edit configurations...' and then select 'mainRunner' from the "Use classpath of module" dropbox. 
+
