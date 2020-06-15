@@ -1,3 +1,5 @@
+#### Threshold Breach Identifier
+
 An Apache Flink stream processing application using *Scala and SBT*.
 The application generates 'threshold' breach events by matching incoming events against a defined threshold (number of events within a period of time).
 - The externally configured 'threshold definition' is loaded by the application asynchronously. It supports multiple levels of threshold.
@@ -7,5 +9,7 @@ The application generates 'threshold' breach events by matching incoming events 
 
 Unit tests use JUnit and ScalaTest.
 
+###### Running app (via tests)
+sbt run
 
 
